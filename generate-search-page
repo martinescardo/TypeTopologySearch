@@ -1,0 +1,10 @@
+#!/bin/sh
+# Regenerate search.html (and its friends) from a TypeTopology checkout.
+# Usage: ./generate-search-page /path/to/TypeTopology
+set -e
+if [ -z "$1" ]; then
+    echo "usage: $0 /path/to/TypeTopology" >&2
+    exit 1
+fi
+here=$(dirname "$0")
+exec "$here/agda-index.py" --typetopology "$1"

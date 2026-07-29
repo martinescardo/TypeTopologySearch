@@ -1,0 +1,238 @@
+# concept	prose pattern	identifier pattern	landmarks (curated)	search alias
+function extensionality	function(al)? extensionality	funext|FunExt|Fun-Ext|dfunext	funext, Fun-Ext, dfunext
+propositional extensionality	propositional extensionality	propext|Prop-Ext|PropExt	Prop-Ext, propext, PropExt
+univalence	univalence	[Uu]nivalen	is-univalent, Univalence, univalence-gives-funext
+propositional truncation	propositional truncations?	truncation|∥_∥|∃!?_	∥_∥, ∣_∣, ∥∥-rec
+propositional resizing	propositional resizing|resizing axiom	[Rr]esizing	Propositional-resizing, is-small, resize
+set replacement	set replacement	Set-Replacement|set-replacement	set-replacement-construction, Set-Replacement, set-replacement-from-set-quotients-and-prop-trunc
+excluded middle	excluded middle	\bEM\b|excluded-middle	EM, excluded-middle, EM-gives-DNE
+weak excluded middle	weak excluded middle|\bWEM\b	WEM	WEM, WEM-gives-decomposition-of-two-pointed-types
+double negation	double negation	¬¬|double-negation|DN	¬¬-stable, Ω¬¬-to-Ω, is-¬¬-Compact'
+axiom of choice	axiom of choice|countable choice|dependent choice	\bAC\b|\bDC\b|[Cc]hoice	K-AC-ℕ, binary-choice, TChoice	choice
+LPO	\bLPO\b|limited principle of omniscience	\bLPO\b	LPO, LPO', LPO-variation
+WLPO	\bWLPO\b	WLPO	WLPO, WLPO', LPO-gives-WLPO
+LLPO	\bLLPO\b|lesser limited principle of omniscience	\bLLPO\b	LLPO, LLPO', untruncated-LLPO
+constructive taboo	constructive taboo	[Tt]aboo	⊴-add-taboo, resizing-taboo, shulmans-taboo
+identity type	identity types?	＝|Id\b|identity-type	_＝_, transport, ap
+equivalence of types	type equivalence|equivalence between	≃|is-equiv|Equiv	is-equiv, ≃-refl, idIsEquiv
+embedding	embedding	embedding|↪	is-embedding, _↪_
+retract	retract	[Rr]etract	retract, has-section
+subsingleton	subsingleton|truth values?|proposition	is-prop|Ω|subsingleton	is-prop, Ω, is-subsingleton
+set	is a set|sethood	is-set|sethood	is-set, is-set-explicit
+decidable equality	decidable equality|discrete type	is-discrete|decidable-equality	is-discrete, discrete-types-are-sets
+isolated point	isolated point	isolated	is-h-isolated, is-isolated, is-isolated'
+Hedberg theorem	hedberg	[Hh]edberg	hedberg, local-hedberg, local-hedberg'
+structure identity principle	structure identity principle	sns|SNS|structure-identity	SNS, sns-data, frame-sns-data
+locally small	locally small|local smallness	locally-small|is-small	is-locally-small, is-small
+compactness	compact|exhausti|searchab	[Cc]ompact|searchable	is-compact, is-compact∙, is-compact-open
+uniform continuity	uniform(ly)? continu	uniform.*[Cc]ontinu|uniformly-continuous	is-uniformly-continuous, uniformly-continuous, _is-a-modulus-of-uniform-continuity-for_
+modulus of continuity	modul(us|i) of (uniform )?continuity	modulus	Lemma[LM-least-modulus], Lemma[LM-₂ℕ-least-modulus], Lemma[LM-modulus]
+fan functional	fan functional|fan theorem	[Ff]an	fan-behaviour, fan, cofan
+Cantor type	cantor (type|space)	Cantor	Cantor-Schröder-Bernstein, Cantor, Cantor[_]
+Baire type	baire	Baire	Baire, Baire-is-totally-separated
+generic convergent sequence	convergent sequence|ℕ∞	ℕ∞	ℕ∞-corec, ℕ→𝟚-to-ℕ∞, ℕ∞
+total separatedness	totally separated|total separatedness	totally-separated|total-separated	is-totally-separated, totally-separated-types-are-sets
+intrinsic topology	intrinsic topology		
+continuity principle	continuity (principle|axiom)	[Cc]ontinuity	continuity-data, dialogue-continuity, _is-modulus-of-continuity-of_
+ordinal	ordinal	Ordinal|ordinal	Ordinal, OrdinalStructure, Ordinalᵀ
+ordinal exponentiation	ordinal exponentiation	exponentiation	exponentiationᴸ, exponentiation-constructions-agree, exponentiationᴸ-has-trichotomous-least-element
+transfinite induction	transfinite induction	transfinite	transfinite-induction, transfinite-induction-on-OO, transfinite-induction'
+initial segment	initial segments?	initial-segment	is-initial-segment, is-initial-segment', initial-segment-of-sup-at-component
+well-founded relation	well.founded	well-founded|WF	well-founded, well-foundedness, is-well-founded
+Burali-Forti	burali.forti	Burali|burali	Burali-Forti
+poset	poset|partial order	[Pp]oset|order	is-partial-order, Poset
+directed complete poset	directed complete|dcpo	[Dd]cpo|DCPO	DCPO, DCPO-structure, is-directed-complete
+way-below relation	way.below	way-below|≪	way-below, approximating-family-is-way-below, α∞-is-way-below
+ideal completion	ideal completion	[Ii]deal	is-ideal, Ideal, ideality
+least upper bound	least upper bound|supremum	sup|lub|least-upper	has-sup, upper-is-sup-δ, is-least-upper-boundᴮ
+bottom element	bottom element|least element	⊥|bottom|least	has-bottom, Sᵈᶜᵖᵒ⊥, is-bottom
+pointed dcpo	pointed dcpo	pointed	pointed-∞-magma, pointed, pointed-type
+domain theory	domain theory|scott	[Dd]omain|[Ss]cott	DCPO, ScottLocale, is-directed-complete
+frame	\bframe\b|frame homomorphism	Frame|frame	Frame, frame-structure, frame-homomorphisms-preserve-all-joins
+locale	locale	Locale|locale	ScottLocale, Locale, to-locale-＝
+spectral locale	spectral	[Ss]pectral	is-spectral, Spectral-Point, spectralᴰ
+distributive lattice	distributive lattice	[Dd]istributive	DistributiveLattice, distributive, to-distributive-lattice
+compact open	compact open	compact-open	is-compact-open, is-compact-open', has-a-directed-cover-of-compact-opens
+group	\bgroup\b	Group|group	Group, group-structure, is-hom
+free group	free group	free-group|FreeGroup	free-group, Lemma[free-groups-from-general-set-quotients], free-group-construction-reduction
+egroup	egroup|setoid	EGroup|egroup|Setoid|setoid	hom-setoid, free-egroup, EGroup
+monoid	monoid	[Mm]onoid	monoid-axioms, Monoid, monoid
+graphic monoid	graphic monoid	graphic	graphical, graphicality, graphical⁻
+magma	magma	[Mm]agma	∞-Magma, ∞-bigmagma, ∞-hugemagma
+semilattice	semilattice	[Ss]emilattice	𝓚-join-semilattice, min-is-bounded-semilattice
+lists without repetitions	lists without repetitions	repetition	no-repetitions, has-no-repetitions, repetitions-complemented
+Church-Rosser	church.rosser|confluen	Church-Rosser|confluen	Theorem[Church-Rosser], Theorem[Church-Rosser≈], Lemma[Church-Rosser]
+reduction	reduction relation|normal form	reduct|▷	free-group-construction-reduction, _▷⋆_, _◁▷_
+algebraic injectivity	algebraic(ally)? injectiv|injective type	ainjectiv	ainjective-type, aflabby-types-are-ainjective, retract-of-ainjective
+flabbiness	flabb	aflabb|flabb	aflabby, flabby, aflabby-types-are-ainjective
+partial-map classifier	partial.map classifier|lifting monad	𝓛|[Ll]ifting	𝓛-algebra, 𝓛-DCPO⁻, is-free-𝓛-alg
+dominance	dominance	[Dd]ominance|dominant	is-dominance, is-dominance', Dominance
+category	category theory|categor	[Cc]ategor	Precategory, is-univalent-precategory
+displayed category	displayed categor	[Dd]isplayed	is-displayed-univalent-refl-graph, is-displayed-category, is-displayed-category-is-prop
+adjunction	(left|right) adjoint|adjunction	adjoint|adjunction	adjunction, adjunction-inequality-forward, adjunction-inequality-backward
+universal property	universal property	universal|universality	/-universality, is-universal-element-of, universality
+mediating map	mediating map	mediating	mediating-map/, mediating-map, Idl-mediating
+functor	functor	[Ff]unctor	K-functor, functor-map, 𝓞-functor
+natural transformation	natural transformation	natural	pullback-naturality, is-natural, ·-natural
+wild category	wild categor	[Ww]ild	WildCategoryNotation, WildCategory, wildcatobj
+duploid	duploid	[Dd]uploid	preduploid, duploid, preduploid-axioms
+crossed module	crossed module	[Cc]rossed	CrossedModule, CrossedModuleHom
+constructive set theory	constructive set theory		
+iterative set	iterative (set|multiset)	𝕍|𝕄|iterative	𝕍ᵒʳᵈ, 𝕍-set, Ord-to-𝕍
+cumulative hierarchy	cumulative hierarchy	cumulative	cumulative, cumulative⁺, cumulative-hierarchy-exists
+set quotient	set quotients?	[Qq]uotient	set-quotients-exist, are-effective, set-replacement-gives-effective-set-quotients
+Dedekind reals	dedekind real	ℝ|[Dd]edekind	ℝ, being-dedekind-is-prop, dedekind-agrees-with-troelstra
+rational numbers	rational	ℚ|[Rr]ational	ℚ, is-rational, is-irrational
+dyadic rationals	dyadic	[Dd]yadic	Dyadics
+integers	integers	ℤ|[Ii]nteger	succℤ, succ-ℤ, predℤ
+natural numbers	natural numbers	ℕ|[Nn]atural	ℕ, ℕ-induction
+selection function	selection function	selection|_J_|\bJ\b	J, sequenceᴶ
+dialogue tree	dialogue tree	[Dd]ialogue	dialogue-tree, dialogue-tree-correct, dialogue-UC
+effectful forcing	effectful forcing		
+System T	system t\b	ᵀ$|ᵀ-|⌜|TΩ	TΩ, ⟦_⟧
+Kleisli extension	kleisli	[Kk]leisli	⌜Kleisli-extension⌝, kleisli-extension, Kleisli-extension
+monad	monad	[Mm]onad	Monad, Kleisli-extension
+game	\bgame\b|game tree	[Gg]ame	GameJ, Game, game-tree
+alpha-beta pruning	alpha.beta|α.β		
+Lawvere fixed point theorem	lawvere|fixed point theorem	LFPT|[Ll]awvere|fixed-point	LFPT, lfix-is-fixed-point, LFPT-＝
+Higgs involution theorem	higgs|involution	[Ii]nvolution|Higgs	𝟏-involution, involution-swap, involutions-are-equivs
+apartness	apartness	apart	is-apartness, is-strong-apartness, ♯-is-apartness
+tight apartness	tight apartness	tight	is-tight, tight, ♯-is-tight
+metric space	metric space	[Mm]etric	metric-space, is-symmetric, symmetric
+closeness space	closeness	closeness	is-closeness, is-closeness-space, ℕ∞-closeness
+path sequence	path sequences?	≡|path-seq	path-sequence, ≡-to-＝, path-sequenceₛ
+Curry-Howard	curry.howard	Curry	Curry-Howard-EM, PL-gives-Curry-Howard-EM, Curry-Howard-EM-gives-PL
+logical relation	logical relation		
+PCF	\bPCF\b	PCF	PCF, peano-axiom-for-PCF
+computational adequacy	computational adequa|adequa	adequacy	adequacy-step, adequacy-lubs, adequacy-pred
+factorial	factorial	[Ff]actorial	factorial-base, discrete-factorial, general-factorial
+pigeonhole principle	pigeon	[Pp]igeon	pigeon-program, Finite-Pigeonhole, Pigeonhole
+W-type	w.type|well.founded tree	\bW\b|W-type	W, W-induction
+partial element	partial element	partial	is-partial-order, expᴸ-map-is-partially-surjective, partial-orderedness-of
+Sierpinski	sierpinski	𝕊|[Ss]ierpinski	has-the-universal-property-of-sierpinski, universal-property-of-sierpinski, 𝕊
+HoTT/UF	\bHoTT\b|\bUF\b
+spartan MLTT	spartan mltt			MLTT
+unit type	unit type|type 𝟙	^𝟙$|𝟙-is|unique-to-𝟙	𝟙, 𝟙-is-prop, unique-to-𝟙
+empty type	empty type|type 𝟘	^𝟘$|𝟘-is|empty-type|is-empty	is-empty, is-empty-subset, 𝟘
+two-element type	type 𝟚|boolean	^𝟚$|𝟚-is|Bool	𝟚, 𝟚-is-discrete, Bool
+type family	type family|families of types	family|_/_$	is-prop-valued-family, is-univalent-family, is-located-family
+identity function	identity function|identity map	^id$|^id-|^identity	id-≃, id-is-equiv, id-is-embedding
+logical equivalence	logical(ly)? equivalen	↔|logically-equivalent	_↔_, logically-equivalent-props-are-equivalent, decidable-↔
+universe level	universe level|universe polymorph	Universe|universe-	is-universe-embedding, universe-refl-graph, Lift-is-universe-embedding
+subtype classifier	subtype classifier|type of truth values	^Ω$|Ω-is|SubtypeClassifier	Ω, Ω-is-set, 𝟚-to-Ω-is-embedding
+image	image of a (map|function)|surjection	image|surject	is-surjection, is-perfect-image, is-perfect-image-at
+inhabited type	inhabited type	inhabited	is-inhabited, is-thinly-inhabited, is-hereditarily-inhabited
+upper bound	upper bound	upper-bound|is-upperbound	is-upperbound, has-upper-bound-in, is-closed-under-binary-upper-bounds
+least element	least element	least|⊥-is	has-trichotomous-least-element, is-least, has-least
+greatest element	top element|greatest element	^⊤|top-|greatest	is-greatest, ⊤, ∧[_]-greatest
+directed family	directed famil|semidirected	directed	is-directed, is-semidirected, is-directed-complete
+monotone map	monotone|order preserving	monotone|order-preserving	is-order-preserving, is-monotone, is-monotone-endomap
+continuous map	continuous (map|function)|scott continu	is-continuous|continuity	is-continuous, is-continuous-dcpo, is-continuous₀
+supremum	supremum|least upper bound	sup|⋁	is-sup, is-sup-complete, is-σ-suplat-hom
+Scott topology	scott topolog	Scott|scott	is-scott-continuous, is-scott-open, is-scott-domain
+Scott domain	scott domain	ScottDomain|scott-domain	is-scott-domain, DefinitionOfScottDomain
+nucleus	nucleus|nuclei	[Nn]ucleus|nuclei	is-nucleus, is-prenucleus, Perfect-Nucleus
+patch locale	patch	[Pp]atch	Patch⦅Scott⦅𝓓⦆⦆, ℬ-patch, PatchConstruction
+Stone duality	stone|spectral duality	[Ss]tone|duality	is-stone, stoneᴰ, clopen-iff-compact-in-stone-frame
+spectrality	spectral	[Ss]pectral	is-spectral, is-spectral-with-small-basis, is-spectral-map
+sup-lattice	sup.lattice	sup-lattice|Sup-Lattice	is-sup-lattice, Sup-Lattice, sup-lattice-data
+σ-frame	σ.frame|sigma.frame	σ-[Ff]rame	is-σ-frame-hom, is-σ-frame-homomorphism, σ-Frame
+Heyting implication	heyting	[Hh]eyting|⟹	is-heyting-implication-of, is-heyting-implication-operation, _⟹ᵈᶜᵖᵒ_
+binary meet	binary meet|meet	meet	meet-of, meet-of-ba, meet
+binary join	binary join|join	join	has-finite-joins, is-join-preserving, is-inaccessible-by-directed-joins
+ordinal addition	ordinal addition|addition of ordinals	\+ₒ	_+ₒ_, +ₒ-↓-left, +ₒ-left-cancellable
+ordinal multiplication	ordinal multiplication|multiplication of ordinals	×ₒ	_×ₒ_, ×ₒ-↓, ×ₒ-preserves-suprema
+Brouwer codes	brouwer (code|tree|ordinal)	[Bb]rouwer	Brouwer, brouwer-to-oe, brouwer-code
+Kuratowski finiteness	kuratowski	[Kk]uratowski	is-Kuratowski-finite-subset, is-Kuratowski-finite, is-Kuratowski-finite-subsetₚ
+Dedekind finiteness	dedekind.finite	Dedekind-finite	is-Dedekind-finite, wconnected-types-are-Dedekind-finite, Ω-is-Dedekind-finite
+quasidecidable	quasidecidable	quasidecidable|Quasidecidable	is-quasidecidable, is-quasidecidable₀, is-quasidecidable'
+semidecidable	semidecidable	semidecidable	is-semidecidable, is-semidecidable-cong, is-semidecidable'
+complemented subset	complemented	complemented	is-complemented, is-complemented-subset, is-complemented-map
+decidable proposition	decidab	is-decidable|decidability	is-decidable, is-decidableₚ, is-decidable-order
+signed digit	signed digit|ternary	signed|ternary	ternary-nested, ternary-normalised→𝕋, ternary
+interval object	interval object|midpoint	[Mm]idpoint|interval	is-interval-object, is-closed-under-big-midpoint, is-closed-under-midpoint
+initial binary system	binary system	[Bb]inaryS?ystem|binary-system	binary-system-structure, binary-system-axioms
+circle	the circle|S¹	S¹|circle	S¹, S¹-recursion, S¹-induction
+loop space	loop space|fundamental group	loop|π₁	loop, conjugate-loop, loops
+lambda calculus	lambda calculus|λ.calculus	Lambda|lambda|ƛ	Subƛ, 【≡】-【Sub】-Subƛ', 【≡】-【Sub】-Subƛ2
+combinatory logic	combinator	[Cc]ombinator	AllCombinators, S-combinator, Y-is-fp-combinator
+substitution	substitution	[Ss]ubst	subst, subst-cong, subst-rename-comp
+abstract syntax	abstract syntax|syntax of	^Term|Syntax$	Termᵀ, Termᵀ₀
+quantifier	quantifier	quantifier|_K_|⊗ᴷ	_⊗ᴷ_, quantifier, quantifiers
+product of selection functions	product of selection|sequenceᴶ	sequenceᴶ|⊗ᴶ	sequenceᴶ, sequenceᴶᵀ, _⊗ᴶᵀ_
+optimal play	optimal (play|strategy|outcome)	optimal	is-optimal-play, is-optimal-move, is-optimal
+subgame perfect equilibrium	subgame|equilibrium	sgpe|equilibrium	is-in-sgpe, is-in-T-sgpe', is-in-T-sgpe
+minimax	minimax	minimax	minimax, minimax', minimax⋆
+affine monad	affine	[Aa]ffine	is-affine, affine, affine-uniqueness·
+relative monad	relative monad	[Rr]elative-?[Mm]onad	Relative-Monad
+free algebra	free algebra	free-algebra|Free-Algebra	canonical-free-algebra, free-algebra-eliminators, free-algebras-in-the-category-of-sets
+torsor	torsor	[Tt]orsor	is-torsor, is-torsor₁, is-torsor-is-prop
+symmetric group	symmetric group	^Aut$|Aut-|symmetric-group	Aut
+subgroup	subgroup	[Ss]ubgroup	Subgroup, Subgroups, subgroups-form-a-set
+group homomorphism	group homomorphism	^is-hom$|^is-homomorphism$|^homs-	is-hom, is-homomorphism, homs-preserve-unit
+ordered field	ordered field|field axioms	[Ff]ield|ordered-field	Ordered-Field, Field, field-structure
+Banach fixed point theorem	banach	[Bb]anach	BanachFixedPointTheorem
+searchable type	searchab	searchable|csearchable	csearchable, searchable, finite-searchable
+sharp element	sharp	sharp	is-sharp, is-sharp⁻, sharp
+locally small map	small map|smallness of a map	small-map|is-small-map	_is_small-map, ainjectivity-over-small-maps, _is-small-map
+resizing axiom	resizing axiom	Resizing|resizing	resizing-condition, propositional-resizing, Propositional-resizing
+algebraic dcpo	algebraic (dcpo|domain)	algebraic	is-algebraic-dcpo, is-continuous-dcpo-if-algebraic-dcpo, is-algebraic-dcpo-if-unspecified-small-compact-basis
+continuous dcpo	continuous (dcpo|domain)|structurally continuous	continuous-dcpo|structurally-continuous	is-continuous-dcpo, is-pseudocontinuous-dcpo, is-continuous-dcpo-if-algebraic-dcpo
+basis of a dcpo	small basis|basis of a	small-basis|has-basis|is-a-basis	is-small-basis, has-specified-small-basis, has-basis
+sublocale	sublocale	nucleus|_≼_	is-nucleus, is-prenucleus, _≼_
+squashed sum	squashed (sum|cantor)	Σ¹|∑¹	Σ¹, ∑¹, Σ¹-compact∙
+modular group	modular group	PSL2Z	PSL2Z, PSL2Z-ind, PSL2Z-gen-iter
+finiteness	finite type|notions? of finiteness	is-finite|finiteness	is-finite, is-finite', is-finite-up
+Church encoding	church encod	church-encode|church-decode|^O-rec$	church-encode, church-decode, O-rec
+injective type	injectiv	^(?!.*(injective-over|injective-hom|injective-identification|embedding-injective|succ-order-injective)).*injectiv	ainjective-type, injective-type, ainjective-gives-injective, injective-gives-∥ainjective∥
+conatural numbers	conatural|ℕ∞	ℕ∞|conatural	ℕ∞, ℕ∞-to-ℕ→𝟚, ℕ∞'
+left cancellable	left cancellable	left-cancellable	left-cancellable
+induction principle	induction principle	-induction$|induction-principle	ℕ-induction, 𝟘-induction, transfinite-induction
+equivalence relation	equivalence relation	equiv-rel|is-equiv-relation|EqRel	EqRel, is-equiv-relation, equiv-rel
+well order	well order	well-order	is-well-order, is-well-ordered
+canonical map	canonical map	^canonical-map|^[Ii]dtofun	canonical-map, Idtofun, idtofun
+powerset	powerset	^𝓟	𝓟
+Yoneda lemma	yoneda	[Yy]oneda	yoneda-lemma, yoneda-nat, yoneda-elem
+reflexive graph	reflexive graph	reflexive-graph	codiscrete-reflexive-graph, constant-displayed-reflexive-graph
+modality	modal	is-modal|modality|^○	is-modal, ○, ○-rec
+split support	split support	split-support	has-split-support
+total space	total space	total-space	total-spaceᵒʳᵈ
+bounded complete	bounded complete	bounded-complete	bounded-complete
+principal ideal	principal ideal	principal-ideal	principal-ideal
+transfinite recursion	transfinite recursion	transfinite-recursion	transfinite-recursion-on-OO
+univalent universe	univalent universe	^is-univalent	is-univalent
+simple type	simple type	^simple-type	simple-type, simple-type₂
+displayed graph	displayed graph|displayed reflexive graph	^displayed	displayed-edge-rel
+least fixed point	least fixed point	^lfp|least-fixed-point	lfp, has-least-fixed-point
+separated reflection	separated reflection	separated-reflection	totally-separated-reflection
+slice category	slice	^[Cc]oslice|^[Ss]lice	Coslice, slice
+covering family	covering family	^cover|covering	cover-indexₛ, covering-syntax
+directed basis	directed basis	directed-basis|is-basis-for|directified	is-basis-for, directed-basisᴰ
+Cantor-Schroeder-Bernstein	cantor schroeder bernstein|cantor schröder bernstein|CSB	CSB|Schröder	CSB, Cantor-Schröder-Bernstein, discrete-Cantor-Schröder-Bernstein, CantorSchröderBernstein, CSB-construction-map
+double negation shift	double negation shift|negation shift	^DNS|double-negation-shift|∀-shift	DNS₀, J-∀-shift, K-∀-shift
+lexicographic order	lexicographic	lexicographic|lex-order|^lex	lex, lex-for-ordinal
+strict order	strict order	strict-order	
+freely generated	freely generated	freely-generated|^free-	free-group-construction, free-egroup, is-free-𝓛-alg
+anonymous existence	anonymous existence	^∃|∃-is-prop|∃\[꞉\]-syntax	∃-is-prop, ∃[꞉]-syntax
+trichotomous least element	trichotomous	trichotomous	has-trichotomous-least-element, is-trichotomous
+right inverse	right inverse	has-section|is-section|right-inverse	has-section, is-section
+left inverse	left inverse	has-retraction|is-retraction|left-inverse	has-retraction, left-inverse
+topological topos	topological topos	topological-topos|topos	ℕ∞₂-is-not-totally-separated-in-topological-toposes
+computation rule	computation rule	-β$|-compute$|computation-rule	ind-β, ○-rec-compute
+large type	large type	^is-large|large-type	is-large, 𝕍-is-large-set
+small type	small type	^is-small|small-type	is-small, is-small-basis
+topological space	topological space	topological-space|is-topology	generalized-topological-space, ∞-proto-topological-spaces
+negation elimination	negation elimination	^DNE|¬¬-elim|double-negation-elim	DNE, ¬¬-elim, DNE-gives-EM
+binary product	binary product	^_×_$|binary-product|^×-	_×_, ×-is-prop
+classical logic	classical logic	^classical|is-classical	is-classical-well-order
+binary relation	binary relation	binary-relation|is-prop-valued-rel|EqRel	is-prop-valued-rel, EqRel
+fundamental theorem	fundamental theorem	^fundamental	fundamental-theorem-of-transport
+list	empty list|list of	^List$|^_∷_$|^\[\]$|-list$	List, _∷_
+positive element	positive element	(?<!contra)positive	positive-not-zero, is-positive
+unique existence	unique existence	∃!|unique-existence	∃!, ∃!-is-witness
+decreasing list	decreasing list	^is-decreasing|decreasing-list	is-decreasing, is-decreasing-pr₂
+pointwise equality	pointwise equal	^_∼_$|^∼-|pointwise-equal	_∼_, ∼-refl, ∼-trans
+constant map	constant function|constant map	^is-constant|^wconstant	wconstant, wconstant-endomap
+discrete	discrete	discrete	is-discrete, discrete-types-are-sets, is-discrete'
+history dependent	history dependent	optimal-outcome|strategic-path|^Game$|^GameJ$	Game, optimal-outcome, strategic-path
+type tree	type tree	^𝑻|type-tree|^Path$	𝑻, 𝑻-induction, Path

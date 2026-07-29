@@ -1,0 +1,11 @@
+#!/bin/sh
+# Regenerate Definitions.tsv, for typetopology-search.el, from a
+# TypeTopology checkout.
+# Usage: ./generate-definitions /path/to/TypeTopology
+set -e
+if [ -z "$1" ]; then
+    echo "usage: $0 /path/to/TypeTopology" >&2
+    exit 1
+fi
+here=$(dirname "$0")
+exec "$here/agda-index.py" --typetopology "$1" --no-html --emacs-index
