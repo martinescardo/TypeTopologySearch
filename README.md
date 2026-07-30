@@ -26,10 +26,8 @@ page](https://martinescardo.github.io/TypeTopologySearch.html) and an
     1. [Typing Unicode](#typing-unicode)
  1. [Further details](#further-details)
     1. [Generating the index](#generating-the-index)
-    1. [Generating it yourself](#generating-it-yourself)
     1. [The generated index files](#the-generated-index-files)
     1. [The concept vocabulary](#the-concept-vocabulary)
-    1. [Adding a concept](#adding-a-concept)
     1. [The Unicode escape table](#the-unicode-escape-table)
     1. [How the search is implemented](#how-the-search-is-implemented)
     1. [Other Makefile targets](#other-makefile-targets)
@@ -198,7 +196,7 @@ The search page is at
 
 It is a self-contained file with no server behind it, so it works just
 as well from a local copy, opened directly in a browser. [Generate
-your own copy](#generating-it-yourself) if you want. The page's footer
+your own copy](#generating-the-index) if you want. The page's footer
 has a build time stamp.
 
 The arrow keys move a selection through the results without leaving the
@@ -294,8 +292,6 @@ eleven ways `\:` alone knows how to type a colon.
 
 ### Generating the index
 
-### Generating it yourself
-
     ./generate-search-page /path/to/TypeTopology
     ./generate-definitions /path/to/TypeTopology
 
@@ -361,8 +357,6 @@ form suited to being read directly.
 <sub>[Table of contents](#table-of-contents)</sub>
 
 ### The concept vocabulary
-
-### Adding a concept
 
 Append a line to `concepts.tsv`, which has five tab-separated columns,
 namely the concept, a pattern for finding it in the commentary, a
