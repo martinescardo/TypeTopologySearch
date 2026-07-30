@@ -365,9 +365,9 @@ runs just that one.
   path `./generate-search-page` and `./generate-definitions` take.
 * `agda-input-dump` and `compile` need nothing.
 
-    make install TYPETOPOLOGY=/path/to/TypeTopology EMACSDIR=/path/to/emacs/configuration/directory
+To set the Emacs command up with nothing left to configure by hand, run
 
-sets the Emacs command up with nothing left to configure by hand.
+    make install TYPETOPOLOGY=/path/to/TypeTopology EMACSDIR=/path/to/emacs/configuration/directory
 
 * It symlinks `typetopology-search.el`, its byte-compiled form if
   `compile` has been run, and `agda-index.py` into
