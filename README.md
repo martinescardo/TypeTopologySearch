@@ -444,4 +444,6 @@ Neither has to be given:
 
 is the same command.
 
+Installation is idempotent and `make install` updates the installation after `git pull`.
+
 <sub>[Table of contents](#table-of-contents)</sub>
