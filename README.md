@@ -26,6 +26,7 @@ page](https://martinescardo.github.io/TypeTopologySearch.html) and an
  1. [Adding a concept](#adding-a-concept)
  1. [The Unicode escape table](#the-unicode-escape-table)
  1. [How the search is implemented](#how-the-search-is-implemented)
+ 1. [Makefile](#makefile)
 
 ## Installing the Emacs command
 
@@ -341,3 +342,36 @@ and data types and their constructors. We do not index definitions in
 and one- and two-letter names used as variables, except for acronyms such
 as `EM` and `AC` and for the short names that are notions rather than
 variables, such as `ap`, `J` and `W`.
+
+## Makefile
+
+    make all TYPETOPOLOGY=/path/to/TypeTopology
+
+runs every script above. Each is also its own target, so
+
+    make definitions TYPETOPOLOGY=/path/to/TypeTopology
+
+runs just that one.
+
+* `search-page` and `definitions` need `TYPETOPOLOGY` set, the same
+  path `./generate-search-page` and `./generate-definitions` take.
+* `agda-input-dump` and `compile` need nothing.
+
+    make install TYPETOPOLOGY=/path/to/TypeTopology EMACSDIR=/path/to/emacs/configuration/directory
+
+sets the Emacs command up with nothing left to configure by hand.
+
+* It symlinks `typetopology-search.el`, its byte-compiled form if
+  `compile` has been run, and `agda-index.py` into
+  `EMACSDIR/typetopology-search`, so a later `git pull` here needs no
+  reinstalling.
+* It builds the index there for `TYPETOPOLOGY`.
+* It appends a load-path, checkout-root, and `require` snippet to
+  `EMACSDIR/init.el`, or `~/.emacs` if that does not exist, unless it
+  looks like this has already been done. This is the same file
+  Agda's own `agda --emacs-mode setup` would use.
+
+Neither has to be given:
+
+* `TYPETOPOLOGY` defaults to `~/TypeTopology`.
+* `EMACSDIR` defaults to `~/.emacs.d`.

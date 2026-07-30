@@ -1,0 +1,44 @@
+#!/bin/sh
+# Install the Emacs command with no manual load-path or checkout-root
+# configuration needed. typetopology-search.el, its byte-compiled form
+# if there is one, and agda-index.py are symlinked (not copied) into
+# EMACSDIR/typetopology-search, so a later "git pull" here is picked
+# up without reinstalling. The index is then built there for
+# TYPETOPOLOGY. Finally, a load-path/checkout-root/require snippet is
+# appended to EMACSDIR/init.el, or ~/.emacs if that does not exist --
+# the same file "agda --emacs-mode setup" would use -- unless it looks
+# like this has already been done.
+# Usage: ./install-emacs-command /path/to/TypeTopology /path/to/emacs/configuration/directory
+set -e
+if [ -z "$1" ] || [ -z "$2" ]; then
+    echo "usage: $0 /path/to/TypeTopology /path/to/emacs/configuration/directory" >&2
+    exit 1
+fi
+typetopology=$(cd "$1" && pwd)
+mkdir -p "$2"
+emacsdir=$(cd "$2" && pwd)
+here=$(cd "$(dirname "$0")" && pwd)
+target="$emacsdir/typetopology-search"
+
+mkdir -p "$target"
+ln -sf "$here/typetopology-search.el" "$target/typetopology-search.el"
+ln -sf "$here/agda-index.py" "$target/agda-index.py"
+if [ -e "$here/typetopology-search.elc" ]; then
+    ln -sf "$here/typetopology-search.elc" "$target/typetopology-search.elc"
+fi
+
+"$here/agda-index.py" --typetopology "$typetopology" --no-html --emacs-index --out "$target"
+
+if [ -f "$emacsdir/init.el" ]; then
+    initfile="$emacsdir/init.el"
+else
+    initfile="$HOME/.emacs"
+fi
+
+if [ -f "$initfile" ] && grep -qF "(require 'typetopology-search)" "$initfile"; then
+    echo "typetopology-search already set up in $initfile"
+else
+    printf "\n(add-to-list 'load-path \"%s\")\n(setq typetopology-search-checkout-root \"%s\")\n(require 'typetopology-search)\n" \
+           "$target" "$typetopology" >> "$initfile"
+    echo "Added typetopology-search setup to $initfile"
+fi
