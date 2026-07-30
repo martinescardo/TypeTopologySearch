@@ -2,12 +2,13 @@
 
 We provide a [search
 page](https://martinescardo.github.io/TypeTopologySearch.html) and an
-[Emacs search command](#installing-the-emacs-command) for
+[Emacs search command](#installing-the-emacs-command-manually) for
 [TypeTopology](https://github.com/martinescardo/TypeTopology).
 
 ## Table of contents
 
- 1. [Installing the Emacs command](#installing-the-emacs-command)
+ 1. [Installing the Emacs command using the Makefile](#installing-the-emacs-command-using-the-makefile)
+ 1. [Installing the Emacs command manually](#installing-the-emacs-command-manually)
  1. [Compiling it](#compiling-it)
  1. [Using the Emacs command](#using-the-emacs-command)
  1. [What you can search for in Emacs](#what-you-can-search-for-in-emacs)
@@ -26,13 +27,33 @@ page](https://martinescardo.github.io/TypeTopologySearch.html) and an
  1. [Adding a concept](#adding-a-concept)
  1. [The Unicode escape table](#the-unicode-escape-table)
  1. [How the search is implemented](#how-the-search-is-implemented)
- 1. [Makefile](#makefile)
+ 1. [Other Makefile targets](#other-makefile-targets)
 
-## Installing the Emacs command
+## Installing the Emacs command using the Makefile
 
-See the [Makefile](#makefile) for a `make install` command that does
-everything below automatically, with nothing left to configure by
-hand. What follows is the manual equivalent.
+To install the Emacs command after cloning this repository, run
+
+    make install TYPETOPOLOGY=/path/to/TypeTopology EMACSDIR=/path/to/emacs/configuration/directory
+
+or the shorthand
+
+    make install TT=/path/to/TypeTopology E=/path/to/emacs/configuration/directory
+
+Neither has to be given:
+
+* `TYPETOPOLOGY` defaults to `~/TypeTopology`.
+* `EMACSDIR` defaults to `~/.emacs.d`.
+
+This sets everything up with nothing left to configure by hand, and
+remembers both paths, so a later
+
+    make update
+
+needs no arguments.
+
+<sub>[Table of contents](#table-of-contents)</sub>
+
+## Installing the Emacs command manually
 
     (add-to-list 'load-path "/path/to/TypeTopologySearch")
     (setq typetopology-search-checkout-root "/path/to/TypeTopology")
@@ -49,7 +70,9 @@ works.
 
 ## Compiling it
 
-`make install` (see the [Makefile](#makefile)) does this too.
+`make install` (see [Installing the Emacs command using the
+Makefile](#installing-the-emacs-command-using-the-makefile)) does this
+too.
 Byte-compiling is optional on its own. Run
 
     ./compile-emacs-command
@@ -269,8 +292,8 @@ eleven ways `\:` alone knows how to type a colon.
     ./generate-definitions /path/to/TypeTopology
 
 We provide two thin wrapper scripts for the common case, also runnable
-as `make search-page` and `make definitions` (see the
-[Makefile](#makefile)). The first writes `search.html`. The second
+as `make search-page` and `make definitions` (see [Other Makefile
+targets](#other-makefile-targets)). The first writes `search.html`. The second
 writes `Definitions.tsv`, the same way `typetopology-search.el`'s
 bootstrap does. Both call `agda-index.py` with `--typetopology` set to
 their one argument. Read on for what that script takes directly, for
@@ -361,8 +384,8 @@ accented Latin letters, and every spelled-out Greek letter such as
 `\Sigma`, alongside the terser `\GS` form Agda's own file defines
 directly, only exist once Emacs's own Quail machinery has resolved them
 at load time, not as literal text anywhere in Agda's own `agda-input.el`.
-To regenerate it, also runnable as `make agda-input-dump` (see the
-[Makefile](#makefile)):
+To regenerate it, also runnable as `make agda-input-dump` (see [Other
+Makefile targets](#other-makefile-targets)):
 
     ./generate-agda-input-dump
 
@@ -408,45 +431,12 @@ variables, such as `ap`, `J` and `W`.
 
 <sub>[Table of contents](#table-of-contents)</sub>
 
-## Makefile
+## Other Makefile targets
 
-    make all TYPETOPOLOGY=/path/to/TypeTopology
+* `install` also builds `search-page`, `definitions` and `compile`.
+* `all` builds those three plus `agda-input-dump` too.
+* Each of the above is also a build target on its own.
 
-runs every script above. Each is also its own target, so
-
-    make definitions TYPETOPOLOGY=/path/to/TypeTopology
-
-runs just that one.
-
-* `search-page` and `definitions` need `TYPETOPOLOGY` set, the same
-  path `./generate-search-page` and `./generate-definitions` take.
-* `agda-input-dump` and `compile` need nothing.
-
-To set the Emacs command up with nothing left to configure by hand, run
-
-    make install TYPETOPOLOGY=/path/to/TypeTopology EMACSDIR=/path/to/emacs/configuration/directory
-
-* It symlinks `typetopology-search.el`, its byte-compiled form if
-  `compile` has been run, and `agda-index.py` into
-  `EMACSDIR/typetopology-search`, so a later `git pull` here needs no
-  reinstalling.
-* It builds the index there for `TYPETOPOLOGY`.
-* It appends a load-path, checkout-root, and `require` snippet to
-  `EMACSDIR/init.el`, or `~/.emacs` if that does not exist, unless it
-  looks like this has already been done. This is the same file
-  Agda's own `agda --emacs-mode setup` would use.
-
-Neither has to be given:
-
-* `TYPETOPOLOGY` defaults to `~/TypeTopology`.
-* `EMACSDIR` defaults to `~/.emacs.d`.
-
-`TT` and `E` are shorter aliases for `TYPETOPOLOGY` and `EMACSDIR`, so
-
-    make install TT=/path/to/TypeTopology E=/path/to/emacs/configuration/directory
-
-is the same command.
-
-Installation is idempotent and `make install` updates the installation after `git pull`.
+See the [Makefile](Makefile) itself for further details.
 
 <sub>[Table of contents](#table-of-contents)</sub>

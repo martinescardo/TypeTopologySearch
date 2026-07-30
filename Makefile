@@ -1,9 +1,11 @@
+-include .install-config.mk
+
 TT ?=
 E ?=
-TYPETOPOLOGY ?= $(if $(TT),$(TT),$(HOME)/TypeTopology)
-EMACSDIR ?= $(if $(E),$(E),$(HOME)/.emacs.d)
+TYPETOPOLOGY ?= $(if $(TT),$(TT),$(if $(SAVED_TYPETOPOLOGY),$(SAVED_TYPETOPOLOGY),$(HOME)/TypeTopology))
+EMACSDIR ?= $(if $(E),$(E),$(if $(SAVED_EMACSDIR),$(SAVED_EMACSDIR),$(HOME)/.emacs.d))
 
-.PHONY: all search-page definitions agda-input-dump compile install
+.PHONY: all search-page definitions agda-input-dump compile install update upgrade
 
 all: search-page definitions agda-input-dump compile
 
@@ -19,5 +21,13 @@ agda-input-dump:
 compile:
 	./compile-emacs-command
 
-install: compile
+install: search-page definitions compile
 	./install-emacs-command $(TYPETOPOLOGY) $(EMACSDIR)
+	@printf 'SAVED_TYPETOPOLOGY := %s\nSAVED_EMACSDIR := %s\n' \
+	    "$(TYPETOPOLOGY)" "$(EMACSDIR)" > .install-config.mk
+
+update:
+	git pull
+	$(MAKE) install
+
+upgrade: update

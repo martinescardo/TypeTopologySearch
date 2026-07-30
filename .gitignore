@@ -19,3 +19,7 @@ __pycache__/
 /agda-input.el
 /latin-ltx.el
 /agda-input-dump.tsv
+
+# written by "make install" -- see README.md, "Installing the Emacs
+# command using the Makefile"
+/.install-config.mk
