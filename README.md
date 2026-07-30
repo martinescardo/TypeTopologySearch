@@ -22,7 +22,7 @@ page](https://martinescardo.github.io/TypeTopologySearch.html) and an
     1. [Buttons on each result](#buttons-on-each-result)
     1. [Typing Unicode](#typing-unicode)
  1. [Further details](#further-details)
-    1. [Generating the index](#generating-the-index)
+    1. [Generating the search page and index](#generating-the-search-page-and-index)
     1. [The generated index files](#the-generated-index-files)
     1. [Finding agda-index.py](#finding-agda-indexpy)
     1. [Regenerating the index](#regenerating-the-index)
@@ -174,8 +174,8 @@ The search page is at
 
 It is a self-contained file with no server behind it, so it works just
 as well from a local copy, opened directly in a browser. [Generate
-your own copy](#generating-the-index) if you want. The page's footer
-has a build time stamp.
+your own copy](#generating-the-search-page-and-index) if you want. The
+page's footer has a build time stamp.
 
 The arrow keys move a selection through the results without leaving the
 box, and Enter follows it, so a search can be typed and its result opened
@@ -268,7 +268,7 @@ eleven ways `\:` alone knows how to type a colon.
 
 ## Further details
 
-### Generating the index
+### Generating the search page and index
 
     ./generate-search-page /path/to/TypeTopology
     ./generate-definitions /path/to/TypeTopology
