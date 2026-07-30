@@ -781,6 +781,13 @@ const GENERIC=new Set(["type","types","space","spaces","theory","principle",
 // Lecture notes, scratch files and superseded code: real definitions, but
 // not where a concept should be said to live.
 const SIDELINE=/^(MGS|gist|deprecated|Unsafe|TWA)\./;
+// How far down a result sinks for the area it lives in, before relevance is
+// looked at at all: deprecated last of all, since a superseded definition is
+// never the one being looked for, and MGS just above it, since those lecture
+// notes redevelop from scratch names the library already has, so an
+// unqualified search for one of them means the library's own. Everything
+// else shares the top rank and is ordered by relevance alone, as before.
+const AREA=m=>/^deprecated\./.test(m)?2:/^MGS\./.test(m)?1:0;
 const q=document.getElementById("q"), out=document.getElementById("out"),
       useMods=document.getElementById("mods"), useSigs=document.getElementById("sigs"),
       useAllScope=document.getElementById("allscope"),
@@ -1056,9 +1063,9 @@ function search(){
       if(s<0){ worst=-1; break; }
       if(s>worst) worst=s;                     // a hit is only as good as its weakest word
     }
-    if(worst>=0) hits.push([worst,-(r[3]||0),r]);
+    if(worst>=0) hits.push([AREA(MODS[r[1]]),worst,-(r[3]||0),r]);
   }
-  hits.sort((a,b)=>a[0]-b[0]||a[1]-b[1]);
+  hits.sort((a,b)=>a[0]-b[0]||a[1]-b[1]||a[2]-b[2]);
   // A concept also answers to the words its prose pattern knows, so that
   // "exhaustible" finds compactness even though no label says it.
   let cons=CONS.filter(c=>all(c[0].toLowerCase())
@@ -1077,7 +1084,7 @@ function search(){
              .map(c=>[c[0],c[1].filter(ownSiteInPath),c[2].filter(inPath),c[3]]);
     ppl=ppl.filter(p=>p[2].some(inPath)).map(p=>[p[0],p[1],p[2].filter(inPath)]);
   }
-  render(hits.slice(0,400).map(h=>h[2]),cons,ppl,inPath,terms,wantMods,wantSigs,wantAllScope);
+  render(hits.slice(0,400).map(h=>h[3]),cons,ppl,inPath,terms,wantMods,wantSigs,wantAllScope);
 }
 // Emacs Agda-mode style escape sequences, e.g. \to for "→" and \MCU for
 // "𝓤". Runs on every keystroke rather than waiting for a trigger key,

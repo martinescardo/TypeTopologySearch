@@ -797,6 +797,54 @@ they happened to be in."
                            (typetopology-search--filter "flabby"))
                    '("flabby-b" "flabby-a")))))
 
+;; ------------------------------------------------------- area demotion
+
+(defun tt-search--entry-in (name mod)
+  "An entry called NAME living in module MOD, for the area tests."
+  (tt-search--make-entry
+   :name name :dispmod mod :importmod mod :file "" :line 1 :uses 0
+   :sig "" :assumes ""))
+
+(ert-deftest tt-search-entry-area-tiers ()
+  "`deprecated' sinks furthest, `MGS' next, everything else shares the
+top rank. The prefix is a whole first path segment, so a module merely
+beginning with those letters -- `MGSomething', say -- is not demoted."
+  (should (= (typetopology-search--entry-area
+              (tt-search--entry-in "f" "deprecated.StructureIdentityPrinciple")) 2))
+  (should (= (typetopology-search--entry-area
+              (tt-search--entry-in "f" "MGS.Basic-UF")) 1))
+  (should (= (typetopology-search--entry-area
+              (tt-search--entry-in "f" "InjectiveTypes.Blackboard")) 0))
+  (should (= (typetopology-search--entry-area
+              (tt-search--entry-in "f" "MGSomething.Elsewhere")) 0))
+  (should (= (typetopology-search--entry-area
+              (tt-search--entry-in "f" "Deprecated.Elsewhere")) 0)))
+
+(ert-deftest tt-search-filter-sinks-deprecated-and-mgs-below-relevance ()
+  "The area outranks relevance itself: an exact name match in
+`deprecated' still comes after a mere substring match in a live module,
+since a superseded definition is never the one being looked for, and
+MGS sits between the two."
+  (let ((typetopology-search--entries
+         (list (tt-search--entry-in "is-prop" "deprecated.Categories.Sets")
+               (tt-search--entry-in "is-prop" "MGS.Basic-UF")
+               (tt-search--entry-in "xis-propx" "UF.Subsingletons"))))
+    (should (equal (mapcar #'typetopology-search-entry-dispmod
+                           (typetopology-search--filter "is-prop"))
+                   '("UF.Subsingletons" "MGS.Basic-UF"
+                     "deprecated.Categories.Sets")))))
+
+(ert-deftest tt-search-filter-ranks-by-relevance-within-one-area ()
+  "Demotion is a first key, not a replacement: within `deprecated' --
+and equally within everything undemoted -- the old ranking still
+decides."
+  (let ((typetopology-search--entries
+         (list (tt-search--entry-in "A-is-prop" "deprecated.Categories.Sets")
+               (tt-search--entry-in "is-prop" "deprecated.EGroups.Type"))))
+    (should (equal (mapcar #'typetopology-search-entry-name
+                           (typetopology-search--filter "is-prop"))
+                   '("is-prop" "A-is-prop")))))
+
 ;; --------------------------------------------------- showing the list
 
 (ert-deftest tt-search-render-shows-matches-and-highlights-selected ()

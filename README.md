@@ -104,8 +104,20 @@ order, case-insensitively. We rank them most relevant first, namely an
 exact name match, then a name starting with a word, then a word starting
 a hyphenated part of the name, then anywhere else in the name, then a
 word found only in the signature or module, ties broken by use count.
-This is the identical two-level ranking the browser search uses, so the
-two never disagree about which result comes first.
+
+Before any of that, though, a result sinks for the area it lives in.
+Everything in `deprecated` comes last of all, since a superseded
+definition is never the one being looked for, and everything in `MGS`
+just above it, since those lecture notes redevelop from scratch names
+the library already has, so an unqualified search for one of them
+means the library's own. Every other directory shares the top rank and
+is ordered by relevance alone. This outranks relevance itself: an
+exact name match in `deprecated` still comes after a mere substring
+match in a live module. Searching `in deprecated` or `in MGS`
+explicitly is unaffected, since the demotion is then uniform.
+
+This is the identical ranking the browser search uses, so the two never
+disagree about which result comes first.
 
 Up and down arrows move a highlighted selection over that list.  Each
 result shows an "(assumes: ...)" clause, an enclosing-module
@@ -196,6 +208,10 @@ is why `Ordinals.Comp` already reaches
 and contributors alike, so a concept only survives `in` if one of its
 own definitions or one of its discussing modules lies within the path,
 and only those matching modules are then shown.
+
+Results are ranked the same way the Emacs command ranks them, `deprecated`
+last and `MGS` next to last, described in [The Emacs command in
+detail](#the-emacs-command-in-detail).
 
 <sub>[Table of contents](#table-of-contents)</sub>
 

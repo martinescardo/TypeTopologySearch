@@ -402,6 +402,20 @@ a match exists in one of."
         (when (> s worst) (setq worst s))))
     worst))
 
+(defun typetopology-search--entry-area (e)
+  "How far down E sinks for the area it lives in, before relevance is
+looked at at all -- the same `AREA' the browser search page uses, so
+the two agree here too. Lower is better: 2 for `deprecated', since a
+superseded definition is never the one being looked for, 1 for `MGS',
+since those lecture notes redevelop from scratch names the library
+already has, so an unqualified search for one of them means the
+library's own, and 0 for every other directory, which is to say all of
+them share the top rank and are ordered by relevance alone."
+  (let ((mod (typetopology-search-entry-importmod e)))
+    (cond ((string-prefix-p "deprecated." mod) 2)
+          ((string-prefix-p "MGS." mod) 1)
+          (t 0))))
+
 (defun typetopology-search--term-match-p (term text)
   "Whether TERM (a (WORD . REGEXP) pair from
 `typetopology-search--terms') matches somewhere in TEXT (already
@@ -412,10 +426,12 @@ lower-case)."
   "Every entry whose display text matches each whitespace-separated term
 of QUERY, case-insensitively, in any order -- simple and predictable
 over clever, and enough to find a name, a piece of a signature, or a
-module by any of their terms at once -- ranked most relevant first by
+module by any of their terms at once -- ranked by
+`typetopology-search--entry-area' first, so that `deprecated' sinks
+below everything and `MGS' just above it, then most relevant first by
 `typetopology-search--entry-score', ties broken by use count
-(descending), the identical two-key sort the browser search page uses,
-so the two never disagree about which result is \"first\": without
+(descending), the identical three-key sort the browser search page
+uses, so the two never disagree about which result is \"first\": without
 this, \"is-prop\" landed on \"A-is-prop\" ahead of `is-prop' itself,
 since nothing here ranked results at all before now -- entries simply
 kept whatever order Definitions.tsv happened to list them in
@@ -435,12 +451,16 @@ An empty query matches nothing: there is no value in a wall of all
                      typetopology-search--entries)))
       (sort matches
            (lambda (a b)
-             (let ((sa (typetopology-search--entry-score a terms))
-                   (sb (typetopology-search--entry-score b terms)))
-               (if (= sa sb)
-                   (> (typetopology-search-entry-uses a)
-                      (typetopology-search-entry-uses b))
-                 (< sa sb))))))))
+             (let ((aa (typetopology-search--entry-area a))
+                   (ab (typetopology-search--entry-area b)))
+               (if (/= aa ab)
+                   (< aa ab)
+                 (let ((sa (typetopology-search--entry-score a terms))
+                       (sb (typetopology-search--entry-score b terms)))
+                   (if (= sa sb)
+                       (> (typetopology-search-entry-uses a)
+                          (typetopology-search-entry-uses b))
+                     (< sa sb))))))))))
 
 ;; ------------------------------------------------------ showing the list
 
