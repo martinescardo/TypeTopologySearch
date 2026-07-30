@@ -47,7 +47,8 @@ Byte-compiling is optional. Run
     ./compile-emacs-command
 
 once after cloning or pulling, and Emacs picks up the resulting
-`typetopology-search.elc` automatically from then on.
+`typetopology-search.elc` automatically from then on. It makes search
+significantly faster.
 
 ## Using the Emacs command
 
