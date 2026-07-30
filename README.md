@@ -190,7 +190,7 @@ has a build time stamp.
   constructed automatically by a heuristic matching comments to Agda
   code, number of occurrences etc., and then some concepts were added
   manually. These play the role of the concepts listed in a
-  mathematical textbook.
+  mathematical textbook index.
 
 * **Contributors.** We list the people of TypeTopology's own top-level
   `README.md`, with the modules that name them.
