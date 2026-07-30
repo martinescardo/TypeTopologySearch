@@ -2,34 +2,41 @@
 
 We provide a [search
 page](https://martinescardo.github.io/TypeTopologySearch.html) and an
-[Emacs search command](#installing-the-emacs-command-manually) for
+[Emacs search command](#installing-the-emacs-command) for
 [TypeTopology](https://github.com/martinescardo/TypeTopology).
 
 ## Table of contents
 
- 1. [Installing the Emacs command using the Makefile](#installing-the-emacs-command-using-the-makefile)
- 1. [Installing the Emacs command manually](#installing-the-emacs-command-manually)
- 1. [Compiling it](#compiling-it)
+ 1. [Installing the Emacs command](#installing-the-emacs-command)
+    1. [Using the Makefile](#using-the-makefile)
+    1. [Manually](#manually)
+    1. [Compiling it](#compiling-it)
  1. [Using the Emacs command](#using-the-emacs-command)
- 1. [What you can search for in Emacs](#what-you-can-search-for-in-emacs)
- 1. [The Emacs command in detail](#the-emacs-command-in-detail)
+    1. [Basics](#basics)
+    1. [What you can search for](#what-you-can-search-for)
+    1. [In detail](#in-detail)
  1. [Acting on a result](#acting-on-a-result)
- 1. [Finding agda-index.py](#finding-agda-indexpy)
- 1. [Regenerating the index](#regenerating-the-index)
+ 1. [More on the Emacs command](#more-on-the-emacs-command)
+    1. [Finding agda-index.py](#finding-agda-indexpy)
+    1. [Regenerating the index](#regenerating-the-index)
  1. [Using the browser search page](#using-the-browser-search-page)
- 1. [What you can search for in the browser page](#what-you-can-search-for-in-the-browser-page)
- 1. [Browsing the concept list](#browsing-the-concept-list)
- 1. [Selecting and sharing a result](#selecting-and-sharing-a-result)
- 1. [Buttons on each result](#buttons-on-each-result)
- 1. [Typing Unicode in the browser page](#typing-unicode-in-the-browser-page)
- 1. [Generating it yourself](#generating-it-yourself)
- 1. [The generated index files](#the-generated-index-files)
- 1. [Adding a concept](#adding-a-concept)
- 1. [The Unicode escape table](#the-unicode-escape-table)
+    1. [Overview](#overview)
+    1. [What you can search for in the browser page](#what-you-can-search-for-in-the-browser-page)
+ 1. [The browser page's interface](#the-browser-pages-interface)
+    1. [Buttons on each result](#buttons-on-each-result)
+    1. [Typing Unicode](#typing-unicode)
+ 1. [Generating the index](#generating-the-index)
+    1. [Generating it yourself](#generating-it-yourself)
+    1. [The generated index files](#the-generated-index-files)
+ 1. [The concept vocabulary](#the-concept-vocabulary)
+    1. [Adding a concept](#adding-a-concept)
+    1. [The Unicode escape table](#the-unicode-escape-table)
  1. [How the search is implemented](#how-the-search-is-implemented)
  1. [Other Makefile targets](#other-makefile-targets)
 
-## Installing the Emacs command using the Makefile
+## Installing the Emacs command
+
+### Using the Makefile
 
 To install the Emacs command after cloning this repository, run
 
@@ -53,7 +60,7 @@ needs no arguments.
 
 <sub>[Table of contents](#table-of-contents)</sub>
 
-## Installing the Emacs command manually
+### Manually
 
     (add-to-list 'load-path "/path/to/TypeTopologySearch")
     (setq typetopology-search-checkout-root "/path/to/TypeTopology")
@@ -63,16 +70,15 @@ Make sure you have clones of this repository and TypeTopology, and point
 `typetopology-search-checkout-root` at the TypeTopology directory before
 requiring the file. The command `typetopology-search`
 builds its own index the first time it is used. See
-[The Emacs command in detail](#the-emacs-command-in-detail) for how this
+[The Emacs command in detail](#in-detail) for how this
 works.
 
 <sub>[Table of contents](#table-of-contents)</sub>
 
-## Compiling it
+### Compiling it
 
-`make install` (see [Installing the Emacs command using the
-Makefile](#installing-the-emacs-command-using-the-makefile)) does this
-too.
+`make install` (see [Using the Makefile](#using-the-makefile)) does
+this too.
 Byte-compiling is optional on its own. Run
 
     ./compile-emacs-command
@@ -85,6 +91,8 @@ significantly faster.
 
 ## Using the Emacs command
 
+### Basics
+
 `M-x typetopology-search`, or its shorthand `M-x ttsearch`, bound to
 `C-c C-g` in Agda buffers, looks a name or a piece of a type signature up
 against the whole library. Type to filter the results, shown in their
@@ -92,11 +100,11 @@ own window. The arrow keys move a highlighted selection over them, and
 RET acts on it, inserting the name at point, jumping to its definition,
 or inserting `open import Module` for it, whichever you last chose, or
 asking the first time. TAB always asks. See
-[The Emacs command in detail](#the-emacs-command-in-detail) for more.
+[In detail](#in-detail) for more.
 
 <sub>[Table of contents](#table-of-contents)</sub>
 
-## What you can search for in Emacs
+### What you can search for
 
 Several words take the intersection of the results, case-insensitively,
 against a substring of a definition's name, type signature or module.
@@ -107,7 +115,7 @@ search](#what-you-can-search-for-in-the-browser-page) uses.
 
 <sub>[Table of contents](#table-of-contents)</sub>
 
-## The Emacs command in detail
+### In detail
 
 Requiring `typetopology-search.el` also defines `typetopology-mode`, a
 minor mode that attaches itself to every agda2-mode buffer automatically,
@@ -159,7 +167,9 @@ opens the action menu for the currently selected result.
 
 <sub>[Table of contents](#table-of-contents)</sub>
 
-## Finding agda-index.py
+## More on the Emacs command
+
+### Finding agda-index.py
 
 We look for the file `agda-index.py` in the same directory as
 `typetopology-search.el` first. If `typetopology-search.el` was copied
@@ -170,7 +180,7 @@ both work.
 
 <sub>[Table of contents](#table-of-contents)</sub>
 
-## Regenerating the index
+### Regenerating the index
 
 The index is not kept in sync with the source automatically after that
 first build. Run `M-x typetopology-search-regenerate-index` after
@@ -179,6 +189,8 @@ adding, renaming, or removing definitions, to pick up the difference.
 <sub>[Table of contents](#table-of-contents)</sub>
 
 ## Using the browser search page
+
+### Overview
 
 The search page is at
 
@@ -189,9 +201,18 @@ as well from a local copy, opened directly in a browser. [Generate
 your own copy](#generating-it-yourself) if you want. The page's footer
 has a build time stamp.
 
+The arrow keys move a selection through the results without leaving the
+box, and Enter follows it, so a search can be typed and its result opened
+without ever touching the mouse.
+
+A search is also a link. Typing one puts it in the URL as `#q=...`, so
+the address bar itself can be bookmarked or sent to someone else and
+lands on the same results. A search replaces this fragment rather than
+piling one up per keystroke, so the back button has nothing to undo.
+
 <sub>[Table of contents](#table-of-contents)</sub>
 
-## What you can search for in the browser page
+### What you can search for in the browser page
 
 * **Definitions.** We index every publicly visible name in the
   library, including records, datatypes, fields and
@@ -237,11 +258,7 @@ and only those matching modules are then shown.
 
 Results are ranked the same way the Emacs command ranks them, `Unsafe`
 last, `deprecated` next to last and `MGS` above those, described in
-[The Emacs command in detail](#the-emacs-command-in-detail).
-
-<sub>[Table of contents](#table-of-contents)</sub>
-
-## Browsing the concept list
+[The Emacs command in detail](#in-detail).
 
 We also list the concepts alphabetically as clickable links to allow
 browsing the concepts, like in a textbook index. Once a concept is
@@ -250,20 +267,9 @@ immediately.
 
 <sub>[Table of contents](#table-of-contents)</sub>
 
-## Selecting and sharing a result
+## The browser page's interface
 
-The arrow keys move a selection through the results without leaving the
-box, and Enter follows it, so a search can be typed and its result opened
-without ever touching the mouse.
-
-A search is also a link. Typing one puts it in the URL as `#q=...`, so
-the address bar itself can be bookmarked or sent to someone else and
-lands on the same results. A search replaces this fragment rather than
-piling one up per keystroke, so the back button has nothing to undo.
-
-<sub>[Table of contents](#table-of-contents)</sub>
-
-## Buttons on each result
+### Buttons on each result
 
 The ⧉ next to a result's module copies `open import` for that module to
 the clipboard.
@@ -276,7 +282,7 @@ result, each linking to that definition.
 
 <sub>[Table of contents](#table-of-contents)</sub>
 
-## Typing Unicode in the browser page
+### Typing Unicode
 
 The search box also takes Unicode the way the Agda emacs mode does. `\to`
 and `\MCU` become "→" and "𝓤" as you type them, and a key with several
@@ -286,7 +292,9 @@ eleven ways `\:` alone knows how to type a colon.
 
 <sub>[Table of contents](#table-of-contents)</sub>
 
-## Generating it yourself
+## Generating the index
+
+### Generating it yourself
 
     ./generate-search-page /path/to/TypeTopology
     ./generate-definitions /path/to/TypeTopology
@@ -321,7 +329,7 @@ file. Useful options:
 
 <sub>[Table of contents](#table-of-contents)</sub>
 
-## The generated index files
+### The generated index files
 
 `Definitions.txt` is for grep rather than browsing. There is no HTML,
 no pagination, everything on one line, namely a name, its signature
@@ -352,7 +360,9 @@ form suited to being read directly.
 
 <sub>[Table of contents](#table-of-contents)</sub>
 
-## Adding a concept
+## The concept vocabulary
+
+### Adding a concept
 
 Append a line to `concepts.tsv`, which has five tab-separated columns,
 namely the concept, a pattern for finding it in the commentary, a
@@ -375,7 +385,7 @@ since a name that seems obvious is often not the one the library uses.
 
 <sub>[Table of contents](#table-of-contents)</sub>
 
-## The Unicode escape table
+### The Unicode escape table
 
 `agda-input-escapes.json` powers the `\to`/`\MCU` typing
 described above. It is the emacs Agda input method's key table, dumped
