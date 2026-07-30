@@ -34,10 +34,10 @@ page](https://martinescardo.github.io/TypeTopologySearch.html) and an
 
 Make sure you have clones of this repository and TypeTopology, and point
 `typetopology-search-source-root` at the checkout's `source/` directory
-before requiring the file. The command `type-topology-search`
+before requiring the file. The command `typetopology-search`
 builds its own index the first time it is used. See
 [The Emacs command in detail](#the-emacs-command-in-detail) for how this
-works..
+works.
 
 ## Using the Emacs command
 
@@ -52,9 +52,9 @@ asking the first time. TAB always asks. See
 
 ## What you can search for in Emacs
 
-Several words take the intersection of the resuls, case-insensitively,
+Several words take the intersection of the results, case-insensitively,
 against a substring of a definition's name, type signature or
-module. At the moment wildcard syntax is not available unde emacs, but
+module. At the moment wildcard syntax is not available under Emacs, but
 it is available in the [browser-based
 search](#what-you-can-search-for-in-the-browser-page).
 
@@ -90,7 +90,7 @@ that never shows up in a definition's own signature.
 
 Plain RET repeats whatever action was chosen last, except the very
 first time in a session, when a menu offers the choices. TAB always
-opens the action menu for the current selected.
+opens the action menu for the currently selected result.
 
 ## Finding agda-index.py
 
@@ -103,11 +103,11 @@ both work.
 
 ## Regenerating the index
 
-The index not kept in sync with the source automatically after that
+The index is not kept in sync with the source automatically after that
 first build. Run `M-x typetopology-search-regenerate-index` after
 adding, renaming, or removing definitions, to pick up the difference.
 
-## Using the browser page search page
+## Using the browser search page
 
 The search page is at
 
@@ -121,7 +121,7 @@ has a build time stamp.
 ## What you can search for in the browser page
 
 * **Definitions.** We index every publicly visible name in the
-  library, including, records, datatypes, fields and
+  library, including records, datatypes, fields and
   constructors. Each links to where it is defined in the rendered
   Agda, and, when it has one, shows its type too, so most of the time
   you can tell whether a hit is the one you want without leaving the
