@@ -1,5 +1,7 @@
-TYPETOPOLOGY ?= $(HOME)/TypeTopology
-EMACSDIR ?= $(HOME)/.emacs.d
+TT ?=
+E ?=
+TYPETOPOLOGY ?= $(if $(TT),$(TT),$(HOME)/TypeTopology)
+EMACSDIR ?= $(if $(E),$(E),$(HOME)/.emacs.d)
 
 .PHONY: all search-page definitions agda-input-dump compile install
 

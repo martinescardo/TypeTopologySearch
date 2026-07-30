@@ -422,4 +422,10 @@ Neither has to be given:
 * `TYPETOPOLOGY` defaults to `~/TypeTopology`.
 * `EMACSDIR` defaults to `~/.emacs.d`.
 
+`TT` and `E` are shorter aliases for `TYPETOPOLOGY` and `EMACSDIR`, so
+
+    make install TT=/path/to/TypeTopology E=/path/to/emacs/configuration/directory
+
+is the same command.
+
 <sub>[Table of contents](#table-of-contents)</sub>
