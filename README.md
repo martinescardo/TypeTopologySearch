@@ -13,9 +13,9 @@ page](https://martinescardo.github.io/TypeTopologySearch.html) and an
     1. [Compiling it](#compiling-it)
  1. [Using the Emacs command](#using-the-emacs-command)
     1. [Basics](#basics)
+    1. [Acting on a result](#acting-on-a-result)
     1. [What you can search for](#what-you-can-search-for)
     1. [In detail](#in-detail)
- 1. [Acting on a result](#acting-on-a-result)
  1. [More on the Emacs command](#more-on-the-emacs-command)
     1. [Finding agda-index.py](#finding-agda-indexpy)
     1. [Regenerating the index](#regenerating-the-index)
@@ -104,6 +104,14 @@ asking the first time. TAB always asks. See
 
 <sub>[Table of contents](#table-of-contents)</sub>
 
+### Acting on a result
+
+Plain RET repeats whatever action was chosen last, except the very
+first time in a session, when a menu offers the choices. TAB always
+opens the action menu for the currently selected result.
+
+<sub>[Table of contents](#table-of-contents)</sub>
+
 ### What you can search for
 
 Several words take the intersection of the results, case-insensitively,
@@ -156,14 +164,6 @@ Up and down arrows move a highlighted selection over that list.  Each
 result shows an "(assumes: ...)" clause, an enclosing-module
 hypothesis, such as `funext` or a whole record's worth of structure,
 that never shows up in a definition's own signature.
-
-<sub>[Table of contents](#table-of-contents)</sub>
-
-## Acting on a result
-
-Plain RET repeats whatever action was chosen last, except the very
-first time in a session, when a menu offers the choices. TAB always
-opens the action menu for the currently selected result.
 
 <sub>[Table of contents](#table-of-contents)</sub>
 
