@@ -59,7 +59,7 @@ significantly faster.
 ## Using the Emacs command
 
 `M-x typetopology-search`, or its shorthand `M-x ttsearch`, bound to
-`C-c C-v` in Agda buffers, looks a name or a piece of a type signature up
+`C-c C-g` in Agda buffers, looks a name or a piece of a type signature up
 against the whole library. Type to filter the results, shown in their
 own window. The arrow keys move a highlighted selection over them, and
 RET acts on it, inserting the name at point, jumping to its definition,
@@ -70,16 +70,17 @@ asking the first time. TAB always asks. See
 ## What you can search for in Emacs
 
 Several words take the intersection of the results, case-insensitively,
-against a substring of a definition's name, type signature or
-module. At the moment wildcard syntax is not available under Emacs, but
-it is available in the [browser-based
-search](#what-you-can-search-for-in-the-browser-page).
+against a substring of a definition's name, type signature or module.
+`*` stands for any run of characters and `?` for one, and `\*` for a
+literal star, since `*` occurs in names such as `ℤ*-assoc`, the same
+wildcard syntax the [browser-based
+search](#what-you-can-search-for-in-the-browser-page) uses.
 
 ## The Emacs command in detail
 
 Requiring `typetopology-search.el` also defines `typetopology-mode`, a
 minor mode that attaches itself to every agda2-mode buffer automatically,
-via `agda2-mode-hook`, and binds `C-c C-v` there to the search command.
+via `agda2-mode-hook`, and binds `C-c C-g` there to the search command.
 On first use, this command builds a TypeTopology index.
 
 `typetopology-search` looks a name or a piece of a type signature up

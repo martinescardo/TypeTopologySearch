@@ -690,17 +690,75 @@ a name AND a piece of its signature at once, say."
                            (typetopology-search--filter "flabby extension"))
                    '("flabby-extension")))))
 
-(ert-deftest tt-search-word-score-tiers ()
-  (should (= (typetopology-search--word-score "is-prop" "is-prop") 0))
-  (should (= (typetopology-search--word-score "is-prop" "is-prop-valued") 1))
-  (should (= (typetopology-search--word-score "is-prop" "a-is-prop") 2))
+(defun tt-search--term (word)
+  "A plain, non-wildcard term pair, for tests that only care about the
+literal-matching path."
+  (cons word nil))
+
+(ert-deftest tt-search-term-score-tiers ()
+  (should (= (typetopology-search--term-score (tt-search--term "is-prop") "is-prop") 0))
+  (should (= (typetopology-search--term-score (tt-search--term "is-prop") "is-prop-valued") 1))
+  (should (= (typetopology-search--term-score (tt-search--term "is-prop") "a-is-prop") 2))
   ;; "xis-propx": occurs mid-word, "x" right before it is not one of the
   ;; boundary characters -- unlike "unrelated-is-prop-ish" above, where
   ;; the "-" right before "is-prop" DOES make it a word-start (tier 2),
   ;; not a plain substring.
-  (should (= (typetopology-search--word-score "is-prop" "xis-propx") 3))
-  (should (= (typetopology-search--word-score "is-prop" "unrelated-is-prop-ish") 2))
-  (should-not (typetopology-search--word-score "is-prop" "nothing here")))
+  (should (= (typetopology-search--term-score (tt-search--term "is-prop") "xis-propx") 3))
+  (should (= (typetopology-search--term-score (tt-search--term "is-prop") "unrelated-is-prop-ish") 2))
+  (should-not (typetopology-search--term-score (tt-search--term "is-prop") "nothing here")))
+
+;; ------------------------------------------------------------ wildcards
+
+(ert-deftest tt-search-wildcard-regexp-nil-for-plain-word ()
+  "No `*', `?', or `\\' at all -- matched by plain substring search
+instead, both for speed and because most searches have no need for a
+regexp at all."
+  (should-not (typetopology-search--wildcard-regexp "is-prop"))
+  (should-not (typetopology-search--wildcard-regexp "ℤ[1/2]")))
+
+(ert-deftest tt-search-wildcard-regexp-translates-star-and-question-mark ()
+  (should (string-match-p (typetopology-search--wildcard-regexp "is-*-valued")
+                          "is-very-much-valued"))
+  (should-not (string-match-p (typetopology-search--wildcard-regexp "is-*-valued")
+                              "is-not-a-match"))
+  (should (string-match-p (typetopology-search--wildcard-regexp "a?c") "abc"))
+  (should-not (string-match-p (typetopology-search--wildcard-regexp "a?c") "ac"))
+  (should-not (string-match-p (typetopology-search--wildcard-regexp "a?c") "abbc")))
+
+(ert-deftest tt-search-wildcard-regexp-escapes-literal-special-characters ()
+  "A literal `\\*', `\\?', or `\\\\' matches that one character, and every
+other regexp-special character in the word (TypeTopology names are
+full of them, e.g. `ℤ*-assoc') is still literal, not a regexp."
+  (should (string-match-p (typetopology-search--wildcard-regexp "\\*") "*"))
+  (should-not (string-match-p (typetopology-search--wildcard-regexp "\\*") "x"))
+  (should (string-match-p (typetopology-search--wildcard-regexp "ℤ\\*-assoc") "ℤ*-assoc"))
+  (should (string-match-p (typetopology-search--wildcard-regexp "a.b*") "a.bxyz"))
+  (should-not (string-match-p (typetopology-search--wildcard-regexp "a.b*") "axb")))
+
+(ert-deftest tt-search-filter-wildcard-star ()
+  (let ((typetopology-search--entries
+         (list (tt-search--entry "is-prop-valued") (tt-search--entry "is-set-valued")
+               (tt-search--entry "unrelated"))))
+    (should (equal (sort (mapcar #'typetopology-search-entry-name
+                                 (typetopology-search--filter "is-*-valued"))
+                        #'string<)
+                  '("is-prop-valued" "is-set-valued")))))
+
+(ert-deftest tt-search-filter-wildcard-question-mark ()
+  (let ((typetopology-search--entries
+         (list (tt-search--entry "ab") (tt-search--entry "axb") (tt-search--entry "axxb"))))
+    (should (equal (mapcar #'typetopology-search-entry-name
+                           (typetopology-search--filter "a?b"))
+                   '("axb")))))
+
+(ert-deftest tt-search-filter-wildcard-escaped-literal-star ()
+  "A name such as `ℤ*-assoc' (a real one in TypeTopology) is found by
+its literal `*' when escaped, without `*' acting as a wildcard there."
+  (let ((typetopology-search--entries
+         (list (tt-search--entry "ℤ*-assoc") (tt-search--entry "ℤ-assoc"))))
+    (should (equal (mapcar #'typetopology-search-entry-name
+                           (typetopology-search--filter "ℤ\\*-assoc"))
+                   '("ℤ*-assoc")))))
 
 (ert-deftest tt-search-filter-ranks-exact-name-match-first ()
   "The actual bug reported in real use: search.html correctly puts
@@ -868,7 +926,7 @@ tests already cover, so the two cannot silently diverge later."
 (ert-deftest tt-search-highlight-matches-adds-match-face ()
   (with-temp-buffer
     (insert "flabby : A -> B  [M]")
-    (typetopology-search--highlight-matches (point-min) (point-max) '("flab"))
+    (typetopology-search--highlight-matches (point-min) (point-max) (list (tt-search--term "flab")))
     ;; buffer positions start at 1, not 0 -- (point-min) is the real start
     ;; of "flab", (+ (point-min) 3) its last character.
     (should (memq 'match (ensure-list (get-text-property (point-min) 'face))))
@@ -878,19 +936,30 @@ tests already cover, so the two cannot silently diverge later."
 
 (ert-deftest tt-search-highlight-matches-is-case-insensitive-and-literal ()
   "Same matching rule as `typetopology-search--filter' itself -- case-
-insensitive, and literal text rather than a regexp, so a query
-fragment that happens to contain a regexp-special character (common in
-TypeTopology signatures: \"(\", \"[\", \"*\", ...) still highlights
-instead of erroring or silently matching nothing."
+insensitive, and, for a plain (non-wildcard) term, literal text rather
+than a regexp, so a query fragment that happens to contain a
+regexp-special character (common in TypeTopology signatures: \"(\",
+\"[\", ...) still highlights instead of erroring or silently matching
+nothing."
   (with-temp-buffer
     (insert "aflabby (D : U) [3 uses]")
-    (typetopology-search--highlight-matches (point-min) (point-max) '("(D"))
+    (typetopology-search--highlight-matches (point-min) (point-max) (list (tt-search--term "(D")))
     ;; --highlight-matches restores point afterward (it works via
     ;; save-excursion), so search from the real start, not wherever
     ;; point happens to be left.
     (goto-char (point-min))
     (goto-char (search-forward "(D"))
     (should (memq 'match (ensure-list (get-text-property (- (point) 2) 'face))))))
+
+(ert-deftest tt-search-highlight-matches-wildcard ()
+  (with-temp-buffer
+    (insert "is-prop-valued : A -> B  [M]")
+    (typetopology-search--highlight-matches
+     (point-min) (point-max)
+     (list (cons "is-*-valued" (typetopology-search--wildcard-regexp "is-*-valued"))))
+    (should (memq 'match (ensure-list (get-text-property (point-min) 'face))))
+    (goto-char (point-min))
+    (should (memq 'match (ensure-list (get-text-property (1- (search-forward "valued")) 'face))))))
 
 (ert-deftest tt-search-render-highlights-query-in-results ()
   (unwind-protect
@@ -1097,7 +1166,7 @@ does not require agda2-mode to be loaded to work at all."
 ;; -------------------------------------------------------------- mode
 
 (ert-deftest tt-search-mode-map-binds-ttsearch ()
-  (should (eq (lookup-key typetopology-mode-map (kbd "C-c C-v")) #'ttsearch)))
+  (should (eq (lookup-key typetopology-mode-map (kbd "C-c C-g")) #'ttsearch)))
 
 (ert-deftest tt-search-mode-auto-hooked-to-agda2-mode-hook ()
   "Loading typetopology-search.el is the whole setup -- confirms the

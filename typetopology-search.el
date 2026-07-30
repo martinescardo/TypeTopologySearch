@@ -335,63 +335,108 @@ not worth it, and nothing past the first few dozen is ever what was
 meant anyway -- narrowing the query further is always the way to reach
 something further down, the same as with any search.")
 
-(defun typetopology-search--word-score (word text)
-  "How well WORD (already lower-case) matches within TEXT (already
+(defun typetopology-search--wildcard-regexp (word)
+  "WORD's regexp translation when it contains a `*' (any run of
+characters), a `?' (any one character), or a literal one escaped as
+`\\*', `\\?', or `\\\\' -- the same translation the browser search
+page's own `wildcard()' does, so the two agree on what a wildcard
+query means. Returns nil, for a plain substring match instead, when
+WORD has none of `*', `?', or `\\' at all."
+  (when (string-match-p "[*?\\]" word)
+    (let ((body "") (i 0) (n (length word)))
+      (while (< i n)
+        (let ((c (aref word i)))
+          (cond
+           ((and (eq c ?\\) (< (1+ i) n) (memq (aref word (1+ i)) '(?* ?? ?\\)))
+            (setq i (1+ i))
+            (setq body (concat body (regexp-quote (string (aref word i))))))
+           ((eq c ?*) (setq body (concat body ".*")))
+           ((eq c ??) (setq body (concat body ".")))
+           (t (setq body (concat body (regexp-quote (string c))))))
+          (setq i (1+ i))))
+      body)))
+
+(defun typetopology-search--terms (query)
+  "QUERY split into whitespace-separated, lower-cased terms, each a (WORD
+. REGEXP) pair via `typetopology-search--wildcard-regexp' -- REGEXP nil
+for a word matched by plain substring search instead. Shared by
+filtering, scoring, and highlighting, so all three agree on what QUERY
+means."
+  (mapcar (lambda (w) (cons w (typetopology-search--wildcard-regexp w)))
+          (split-string (downcase query))))
+
+(defun typetopology-search--term-score (term text)
+  "How well TERM (a (WORD . REGEXP) pair from
+`typetopology-search--terms') matches within TEXT (already
 lower-case) -- the same tiers the browser search page's own `score()'
 uses, so the two agree on what \"most relevant\" means. Lower is
-better: 0 exact (WORD is the whole of TEXT), 1 prefix, 2 starts a
+better: 0 exact (the match is the whole of TEXT), 1 prefix, 2 starts a
 hyphen/underscore/dot/bracket-separated word within TEXT, 3 found
-anywhere else, or nil when WORD is not in TEXT at all."
-  (let ((i (string-search word text)))
+anywhere else, or nil when TERM does not match TEXT at all."
+  (let ((word (car term)) (rx (cdr term)) i len)
+    (if rx
+        (when (string-match rx text)
+          (setq i (match-beginning 0) len (- (match-end 0) (match-beginning 0))))
+      (let ((p (string-search word text)))
+        (when p (setq i p len (length word)))))
     (when i
       (cond
-       ((and (= i 0) (= (length word) (length text))) 0)
+       ((and (= i 0) (= len (length text))) 0)
        ((= i 0) 1)
        ((and (> i 0) (string-match-p "[-_.[]" (substring text (1- i) i))) 2)
        (t 3)))))
 
-(defun typetopology-search--entry-score (e words)
-  "How relevant E is to WORDS overall: the worst (numerically highest)
-of each word's own best score against E's name, or, for a word not in
+(defun typetopology-search--entry-score (e terms)
+  "How relevant E is to TERMS overall: the worst (numerically highest)
+of each term's own best score against E's name, or, for a term not in
 the name at all, a flat lower-priority tier for being found only
 elsewhere (signature, module, assumptions) -- an exact name match
-first, a name merely containing a word further down, a word that only
+first, a name merely containing a term further down, a term that only
 turned up in a signature or module last, exactly the order
-`typetopology-search--filter''s own AND-of-substrings already
-guarantees a match exists in one of."
+`typetopology-search--filter''s own AND-of-matches already guarantees
+a match exists in one of."
   (let ((name (downcase (typetopology-search-entry-name e)))
         (worst 0))
-    (dolist (w words)
-      (let ((s (or (typetopology-search--word-score w name) 4)))
+    (dolist (term terms)
+      (let ((s (or (typetopology-search--term-score term name) 4)))
         (when (> s worst) (setq worst s))))
     worst))
 
+(defun typetopology-search--term-match-p (term text)
+  "Whether TERM (a (WORD . REGEXP) pair from
+`typetopology-search--terms') matches somewhere in TEXT (already
+lower-case)."
+  (if (cdr term) (string-match-p (cdr term) text) (string-search (car term) text)))
+
 (defun typetopology-search--filter (query)
-  "Every entry whose display text contains each whitespace-separated word
+  "Every entry whose display text matches each whitespace-separated term
 of QUERY, case-insensitively, in any order -- simple and predictable
 over clever, and enough to find a name, a piece of a signature, or a
-module by any of their words at once -- ranked most relevant first by
+module by any of their terms at once -- ranked most relevant first by
 `typetopology-search--entry-score', ties broken by use count
 (descending), the identical two-key sort the browser search page uses,
 so the two never disagree about which result is \"first\": without
 this, \"is-prop\" landed on \"A-is-prop\" ahead of `is-prop' itself,
 since nothing here ranked results at all before now -- entries simply
 kept whatever order Definitions.tsv happened to list them in
-(alphabetical), which has nothing to do with relevance. An empty query
-matches nothing: there is no value in a wall of all 21,000 definitions
-before anything has been typed."
+(alphabetical), which has nothing to do with relevance. A term is
+matched literally unless it contains `*', `?', or `\\', in which case
+it is a wildcard pattern -- see `typetopology-search--wildcard-regexp'.
+An empty query matches nothing: there is no value in a wall of all
+21,000 definitions before anything has been typed."
   (if (string-blank-p query)
       nil
-    (let* ((words (split-string (downcase query)))
+    (let* ((terms (typetopology-search--terms query))
            (matches (cl-remove-if-not
                      (lambda (e)
                        (let ((text (typetopology-search-entry-dtext e)))
-                         (cl-every (lambda (w) (string-search w text)) words)))
+                         (cl-every (lambda (term) (typetopology-search--term-match-p term text))
+                                   terms)))
                      typetopology-search--entries)))
       (sort matches
            (lambda (a b)
-             (let ((sa (typetopology-search--entry-score a words))
-                   (sb (typetopology-search--entry-score b words)))
+             (let ((sa (typetopology-search--entry-score a terms))
+                   (sb (typetopology-search--entry-score b terms)))
                (if (= sa sb)
                    (> (typetopology-search-entry-uses a)
                       (typetopology-search-entry-uses b))
@@ -401,25 +446,35 @@ before anything has been typed."
 
 (defconst typetopology-search--results-buffer-name " *TypeTopology Search*")
 
-(defun typetopology-search--highlight-matches (start end words)
-  "Add the standard `match' face over every occurrence of each of WORDS
-within START..END of the current buffer, case-insensitively -- the
-same substrings `typetopology-search--filter' itself matched on
-(literal text, not a regexp, so a word containing regexp-special
-characters -- and TypeTopology signatures are full of them -- still
-highlights correctly), the same way search.html already highlights a
-match within a result. Layered with `add-face-text-property' rather
-than set outright, so it combines with whatever
-`typetopology-search--display-propertized' already applied (a match
-inside the bold name stays bold, for instance) instead of silently
-overwriting it."
-  (dolist (w words)
-    (unless (string-empty-p w)
-      (save-excursion
-        (goto-char start)
-        (let ((case-fold-search t))
-          (while (search-forward w end t)
-            (add-face-text-property (match-beginning 0) (match-end 0) 'match)))))))
+(defun typetopology-search--highlight-matches (start end terms)
+  "Add the standard `match' face over every occurrence of each of TERMS
+(WORD . REGEXP pairs from `typetopology-search--terms') within
+START..END of the current buffer, case-insensitively -- the same
+matches `typetopology-search--filter' itself matched on, the same way
+search.html already highlights a match within a result. A plain word
+(REGEXP nil) is matched literally, not as a regexp, so a word
+containing regexp-special characters -- and TypeTopology signatures
+are full of them -- still highlights correctly; a wildcard term
+matches as its own regexp instead. Layered with
+`add-face-text-property' rather than set outright, so it combines with
+whatever `typetopology-search--display-propertized' already applied (a
+match inside the bold name stays bold, for instance) instead of
+silently overwriting it."
+  (dolist (term terms)
+    (let ((word (car term)) (rx (cdr term)))
+      (unless (string-empty-p word)
+        (save-excursion
+          (goto-char start)
+          (let ((case-fold-search t))
+            (if rx
+                (while (re-search-forward rx end t)
+                  (add-face-text-property (match-beginning 0) (match-end 0) 'match)
+                  ;; A wildcard term such as a bare "*" can match zero
+                  ;; characters -- re-search-forward would otherwise sit
+                  ;; at the same position forever.
+                  (when (= (match-beginning 0) (match-end 0)) (forward-char 1)))
+              (while (search-forward word end t)
+                (add-face-text-property (match-beginning 0) (match-end 0) 'match)))))))))
 
 (defun typetopology-search--render (query matches selected &optional display-fn)
   "Redraw the results buffer for QUERY's MATCHES with SELECTED
@@ -442,14 +497,14 @@ so the \"nothing typed yet\" message never applies."
          ((null matches) (insert "No matches."))
          (t
           (let ((shown (seq-take matches typetopology-search--max-shown))
-                (words (and query (not (string-blank-p query))
-                           (split-string (downcase query))))
+                (terms (and query (not (string-blank-p query))
+                           (typetopology-search--terms query)))
                 (i 0))
             (dolist (e shown)
               (let ((start (point)))
                 (insert (funcall display-fn e))
-                (when words
-                  (typetopology-search--highlight-matches start (point) words))
+                (when terms
+                  (typetopology-search--highlight-matches start (point) terms))
                 (when (= i selected)
                   (setq selected-pos start)
                   (overlay-put (make-overlay start (point)) 'face 'highlight))
@@ -783,7 +838,7 @@ complementary command, bound by agda2-mode itself.
 
 (defvar typetopology-mode-map
   (let ((m (make-sparse-keymap)))
-    (define-key m (kbd "C-c C-v") #'ttsearch)
+    (define-key m (kbd "C-c C-g") #'ttsearch)
     m)
   "Keymap for `typetopology-mode' -- \"v\", next to agda2-mode's own \"c\"
 prefix commands, so it is reachable with the same hand.")
