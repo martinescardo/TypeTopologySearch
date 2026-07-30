@@ -16,7 +16,7 @@ page](https://martinescardo.github.io/TypeTopologySearch.html) and an
     1. [Acting on a result](#acting-on-a-result)
     1. [What you can search for](#what-you-can-search-for)
     1. [In detail](#in-detail)
- 1. [More on the Emacs command](#more-on-the-emacs-command)
+ 1. [Maintaining the Emacs command](#maintaining-the-emacs-command)
     1. [Finding agda-index.py](#finding-agda-indexpy)
     1. [Regenerating the index](#regenerating-the-index)
  1. [Using the browser search page](#using-the-browser-search-page)
@@ -165,7 +165,7 @@ that never shows up in a definition's own signature.
 
 <sub>[Table of contents](#table-of-contents)</sub>
 
-## More on the Emacs command
+## Maintaining the Emacs command
 
 ### Finding agda-index.py
 
