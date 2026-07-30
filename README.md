@@ -351,8 +351,9 @@ both work.
 whenever the source has a definition newer than the index and asks,
 once, whether to rebuild before searching -- search still works either
 way, just less accurately if declined, and declining is not asked
-again until a further edit. Set it to nil to turn this off and only
-ever regenerate by hand, with `M-x typetopology-search-regenerate-index`.
+again for the rest of the Emacs session, since edits are constant
+while writing Agda. Set it to nil to turn this off and only ever
+regenerate by hand, with `M-x typetopology-search-regenerate-index`.
 
 <sub>[Table of contents](#table-of-contents)</sub>
 

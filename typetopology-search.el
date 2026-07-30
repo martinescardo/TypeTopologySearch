@@ -129,6 +129,15 @@ yet, but never checked or refreshed again except by an explicit
   "The modification time Definitions.tsv had when last loaded, so an
 edit-and-regenerate is picked up automatically on the next search
 without needing an explicit reload command.")
+(defvar typetopology-search--regeneration-declined nil
+  "Non-nil once `typetopology-search--maybe-prompt-to-regenerate' has
+been told \"no\" this Emacs session -- from then on it stops asking
+altogether, for the rest of the session, rather than just until the
+next edit: edits are constant while writing Agda, so re-asking after
+every one of them would defeat the point of declining once. Cleared by
+restarting Emacs, or by an explicit
+`typetopology-search-regenerate-index', either of which means a later
+edit is worth noticing again.")
 
 (defun typetopology-search--display (e)
   "The candidate text shown for entry E, mirroring Definitions.txt's own
@@ -260,13 +269,17 @@ subdirectory -- set it to your TypeTopology directory"
 (defun typetopology-search-regenerate-index ()
   "Rebuild the TypeTopology search index by hand -- after adding,
 renaming, or removing definitions, say, when you would rather not wait
-for (or have turned off `typetopology-search-prompt-to-regenerate')."
+for (or have turned off `typetopology-search-prompt-to-regenerate').
+Also lifts a previous decline (see
+`typetopology-search--regeneration-declined'), so a later edit is
+noticed again."
   (interactive)
   (typetopology-search--regenerate)
   (typetopology-search--load typetopology-search-file)
   (setq typetopology-search--loaded-mtime
         (file-attribute-modification-time
-         (file-attributes typetopology-search-file))))
+         (file-attributes typetopology-search-file)))
+  (setq typetopology-search--regeneration-declined nil))
 
 ;; ------------------------------------------------------ staleness prompt
 
@@ -302,31 +315,22 @@ itself is nil -- in which case staleness is never suspected at all."
           (setq newest mtime))))
     newest))
 
-(defvar typetopology-search--declined-stale-mtime nil
-  "The newest source mtime `typetopology-search--maybe-prompt-to-regenerate'
-last asked about and was told \"no\" to -- remembered so the same
-staleness is not asked about again on every subsequent search, only a
-further edit past this point.")
-
 (defun typetopology-search--maybe-prompt-to-regenerate ()
   "When `typetopology-search-prompt-to-regenerate' is non-nil and the
 source has a definition newer than `typetopology-search-file', ask
 once whether to rebuild it now (blocking, the same as
 `typetopology-search-regenerate-index') before continuing -- answering
-\"no\" just searches the existing index, and is not asked again until a
-further edit makes the source newer still."
+\"no\" searches the existing index instead, and is not asked again for
+the rest of this Emacs session (see
+`typetopology-search--regeneration-declined')."
   (when (and typetopology-search-prompt-to-regenerate
             typetopology-search-generator
+            (not typetopology-search--regeneration-declined)
             (file-exists-p typetopology-search-file))
     (let ((newest (typetopology-search--newest-source-mtime))
           (index-mtime (file-attribute-modification-time
                         (file-attributes typetopology-search-file))))
-      (when (and newest
-                (time-less-p index-mtime newest)
-                (not (and typetopology-search--declined-stale-mtime
-                          (not (time-less-p
-                                typetopology-search--declined-stale-mtime
-                                newest)))))
+      (when (and newest (time-less-p index-mtime newest))
         (if (y-or-n-p "TypeTopology: the index looks older than the source \
 -- regenerate it now? (search still works either way, just less \
 accurately without it. You can manually regenerate the index at any \
@@ -336,9 +340,8 @@ time by doing M-x typetopology-search-regenerate-index.) ")
               (typetopology-search--load typetopology-search-file)
               (setq typetopology-search--loaded-mtime
                     (file-attribute-modification-time
-                     (file-attributes typetopology-search-file)))
-              (setq typetopology-search--declined-stale-mtime nil))
-          (setq typetopology-search--declined-stale-mtime newest)
+                     (file-attributes typetopology-search-file))))
+          (setq typetopology-search--regeneration-declined t)
           (message "TypeTopology: searching the existing index as is."))))))
 
 (defun typetopology-search--ensure-loaded ()

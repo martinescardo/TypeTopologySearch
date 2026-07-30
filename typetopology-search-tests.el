@@ -381,7 +381,7 @@ checkout to compare against) -- no prompt."
          (typetopology-search-file file)
          (typetopology-search-generator "/bin/true")
          (typetopology-search-prompt-to-regenerate t)
-         (typetopology-search--declined-stale-mtime nil)
+         (typetopology-search--regeneration-declined nil)
          (prompted nil))
     (unwind-protect
         (progn
@@ -402,7 +402,7 @@ checkout to compare against) -- no prompt."
          (typetopology-search-checkout-root dir)
          (typetopology-search-file (expand-file-name "Definitions.tsv" dir))
          (typetopology-search-prompt-to-regenerate t)
-         (typetopology-search--declined-stale-mtime nil)
+         (typetopology-search--regeneration-declined nil)
          (typetopology-search--entries nil)
          (typetopology-search--loaded-mtime nil))
     (unwind-protect
@@ -422,34 +422,15 @@ checkout to compare against) -- no prompt."
       (delete-directory dir t))))
 
 (ert-deftest tt-search-maybe-prompt-remembers-decline ()
-  "Answering no once is not asked again for the same staleness."
+  "Answering no once is not asked again for the rest of the session --
+not even for a further edit past the one just declined, since edits
+are constant while writing Agda and re-asking after each one would
+defeat the point of declining."
   (let* ((file (make-temp-file "tt-search-idx" nil ".tsv"))
          (typetopology-search-file file)
          (typetopology-search-generator "/bin/true")
          (typetopology-search-prompt-to-regenerate t)
-         (typetopology-search--declined-stale-mtime nil)
-         (calls 0)
-         (fixed-newest (current-time)))
-    (unwind-protect
-        (progn
-          (with-temp-file file (insert "x"))
-          (set-file-times file (time-subtract fixed-newest 100))
-          (cl-letf (((symbol-function 'typetopology-search--newest-source-mtime)
-                     (lambda () fixed-newest))
-                    ((symbol-function 'y-or-n-p)
-                     (lambda (&rest _) (cl-incf calls) nil)))
-            (typetopology-search--maybe-prompt-to-regenerate)
-            (typetopology-search--maybe-prompt-to-regenerate))
-          (should (= calls 1)))
-      (delete-file file))))
-
-(ert-deftest tt-search-maybe-prompt-reprompts-after-further-edit ()
-  "A further edit past the declined mtime is asked about again."
-  (let* ((file (make-temp-file "tt-search-idx" nil ".tsv"))
-         (typetopology-search-file file)
-         (typetopology-search-generator "/bin/true")
-         (typetopology-search-prompt-to-regenerate t)
-         (typetopology-search--declined-stale-mtime nil)
+         (typetopology-search--regeneration-declined nil)
          (calls 0)
          (t1 (current-time))
          (t2 (time-add (current-time) 5)))
@@ -459,14 +440,34 @@ checkout to compare against) -- no prompt."
           (set-file-times file (time-subtract t1 100))
           (cl-letf (((symbol-function 'typetopology-search--newest-source-mtime)
                      (lambda () t1))
-                    ((symbol-function 'y-or-n-p) (lambda (&rest _) (cl-incf calls) nil)))
+                    ((symbol-function 'y-or-n-p)
+                     (lambda (&rest _) (cl-incf calls) nil)))
             (typetopology-search--maybe-prompt-to-regenerate))
           (cl-letf (((symbol-function 'typetopology-search--newest-source-mtime)
                      (lambda () t2))
-                    ((symbol-function 'y-or-n-p) (lambda (&rest _) (cl-incf calls) nil)))
+                    ((symbol-function 'y-or-n-p)
+                     (lambda (&rest _) (cl-incf calls) nil)))
             (typetopology-search--maybe-prompt-to-regenerate))
-          (should (= calls 2)))
+          (should (= calls 1)))
       (delete-file file))))
+
+(ert-deftest tt-search-regenerate-index-command-clears-declined-flag ()
+  "An explicit `typetopology-search-regenerate-index' lifts a previous
+decline, so a later edit is worth noticing again."
+  (let* ((dir (make-temp-file "tt-search-gen" t))
+         (typetopology-search-generator (expand-file-name "agda-index.py" dir))
+         (typetopology-search-checkout-root dir)
+         (typetopology-search-file (expand-file-name "Definitions.tsv" dir))
+         (typetopology-search--entries nil)
+         (typetopology-search--loaded-mtime nil)
+         (typetopology-search--regeneration-declined t))
+    (unwind-protect
+        (progn
+          (make-directory (expand-file-name "source" dir))
+          (tt-search--write-fake-generator typetopology-search-generator)
+          (typetopology-search-regenerate-index)
+          (should-not typetopology-search--regeneration-declined))
+      (delete-directory dir t))))
 
 ;; ------------------------------------------------------- action decision
 
