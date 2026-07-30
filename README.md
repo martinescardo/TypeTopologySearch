@@ -45,7 +45,7 @@ builds its own index the first time it is used. See
 [The Emacs command in detail](#the-emacs-command-in-detail) for how this
 works.
 
-[Table of contents](#table-of-contents)
+<sub>[Table of contents](#table-of-contents)</sub>
 
 ## Compiling it
 
@@ -58,7 +58,7 @@ once after cloning or pulling, and Emacs picks up the resulting
 `typetopology-search.elc` automatically from then on. It makes search
 significantly faster.
 
-[Table of contents](#table-of-contents)
+<sub>[Table of contents](#table-of-contents)</sub>
 
 ## Using the Emacs command
 
@@ -71,7 +71,7 @@ or inserting `open import Module` for it, whichever you last chose, or
 asking the first time. TAB always asks. See
 [The Emacs command in detail](#the-emacs-command-in-detail) for more.
 
-[Table of contents](#table-of-contents)
+<sub>[Table of contents](#table-of-contents)</sub>
 
 ## What you can search for in Emacs
 
@@ -82,7 +82,7 @@ literal star, since `*` occurs in names such as `ℤ*-assoc`, the same
 wildcard syntax the [browser-based
 search](#what-you-can-search-for-in-the-browser-page) uses.
 
-[Table of contents](#table-of-contents)
+<sub>[Table of contents](#table-of-contents)</sub>
 
 ## The Emacs command in detail
 
@@ -112,7 +112,7 @@ result shows an "(assumes: ...)" clause, an enclosing-module
 hypothesis, such as `funext` or a whole record's worth of structure,
 that never shows up in a definition's own signature.
 
-[Table of contents](#table-of-contents)
+<sub>[Table of contents](#table-of-contents)</sub>
 
 ## Acting on a result
 
@@ -120,7 +120,7 @@ Plain RET repeats whatever action was chosen last, except the very
 first time in a session, when a menu offers the choices. TAB always
 opens the action menu for the currently selected result.
 
-[Table of contents](#table-of-contents)
+<sub>[Table of contents](#table-of-contents)</sub>
 
 ## Finding agda-index.py
 
@@ -131,7 +131,7 @@ whatever `agda-index.py` is found on `$PATH` instead. Adding this
 repository to `$PATH`, or just a symlink to `agda-index.py` there,
 both work.
 
-[Table of contents](#table-of-contents)
+<sub>[Table of contents](#table-of-contents)</sub>
 
 ## Regenerating the index
 
@@ -139,7 +139,7 @@ The index is not kept in sync with the source automatically after that
 first build. Run `M-x typetopology-search-regenerate-index` after
 adding, renaming, or removing definitions, to pick up the difference.
 
-[Table of contents](#table-of-contents)
+<sub>[Table of contents](#table-of-contents)</sub>
 
 ## Using the browser search page
 
@@ -152,7 +152,7 @@ as well from a local copy, opened directly in a browser. [Generate
 your own copy](#generating-it-yourself) if you want. The page's footer
 has a build time stamp.
 
-[Table of contents](#table-of-contents)
+<sub>[Table of contents](#table-of-contents)</sub>
 
 ## What you can search for in the browser page
 
@@ -197,7 +197,7 @@ and contributors alike, so a concept only survives `in` if one of its
 own definitions or one of its discussing modules lies within the path,
 and only those matching modules are then shown.
 
-[Table of contents](#table-of-contents)
+<sub>[Table of contents](#table-of-contents)</sub>
 
 ## Browsing the concept list
 
@@ -206,7 +206,7 @@ browsing the concepts, like in a textbook index. Once a concept is
 clicked, it is entered into the search box and the search is run
 immediately.
 
-[Table of contents](#table-of-contents)
+<sub>[Table of contents](#table-of-contents)</sub>
 
 ## Selecting and sharing a result
 
@@ -219,7 +219,7 @@ the address bar itself can be bookmarked or sent to someone else and
 lands on the same results. A search replaces this fragment rather than
 piling one up per keystroke, so the back button has nothing to undo.
 
-[Table of contents](#table-of-contents)
+<sub>[Table of contents](#table-of-contents)</sub>
 
 ## Buttons on each result
 
@@ -232,7 +232,7 @@ rather than per call site. A module's own count in that list is a
 second such button, opening which definitions of that module use the
 result, each linking to that definition.
 
-[Table of contents](#table-of-contents)
+<sub>[Table of contents](#table-of-contents)</sub>
 
 ## Typing Unicode in the browser page
 
@@ -242,7 +242,7 @@ candidates, such as `\:`, takes a following digit to pick among them.
 `\:4` reaches "꞉", the library's own binder colon, the fourth of the
 eleven ways `\:` alone knows how to type a colon.
 
-[Table of contents](#table-of-contents)
+<sub>[Table of contents](#table-of-contents)</sub>
 
 ## Generating it yourself
 
@@ -277,7 +277,7 @@ file. Useful options:
                     not needed; typetopology-search.el's bootstrap
                     uses this.
 
-[Table of contents](#table-of-contents)
+<sub>[Table of contents](#table-of-contents)</sub>
 
 ## The generated index files
 
@@ -308,7 +308,7 @@ that one script.
 The concept vocabulary belongs to `concepts.tsv` instead, already in a
 form suited to being read directly.
 
-[Table of contents](#table-of-contents)
+<sub>[Table of contents](#table-of-contents)</sub>
 
 ## Adding a concept
 
@@ -331,7 +331,7 @@ cut back to the point where every variant of the notion is caught but no
 unrelated word is. And the named definitions should be checked to exist,
 since a name that seems obvious is often not the one the library uses.
 
-[Table of contents](#table-of-contents)
+<sub>[Table of contents](#table-of-contents)</sub>
 
 ## The Unicode escape table
 
@@ -360,7 +360,7 @@ bare `=`, and keep the first surviving candidate as the key's value,
 or the whole list when more than one survives, so that the search
 page's own digit-selection can reach the rest.
 
-[Table of contents](#table-of-contents)
+<sub>[Table of contents](#table-of-contents)</sub>
 
 ## How the search is implemented
 
@@ -387,7 +387,7 @@ and one- and two-letter names used as variables, except for acronyms such
 as `EM` and `AC` and for the short names that are notions rather than
 variables, such as `ap`, `J` and `W`.
 
-[Table of contents](#table-of-contents)
+<sub>[Table of contents](#table-of-contents)</sub>
 
 ## Makefile
 
@@ -422,4 +422,4 @@ Neither has to be given:
 * `TYPETOPOLOGY` defaults to `~/TypeTopology`.
 * `EMACSDIR` defaults to `~/.emacs.d`.
 
-[Table of contents](#table-of-contents)
+<sub>[Table of contents](#table-of-contents)</sub>
