@@ -16,9 +16,9 @@ page](https://martinescardo.github.io/TypeTopologySearch.html) and an
     1. [Acting on a result](#acting-on-a-result)
     1. [What you can search for](#what-you-can-search-for)
     1. [In detail](#in-detail)
- 1. [Using the browser search page](#using-the-browser-search-page)
+ 1. [Using the search page](#using-the-search-page)
     1. [Overview](#overview)
-    1. [What you can search for in the browser page](#what-you-can-search-for-in-the-browser-page)
+    1. [What you can search for in the search page](#what-you-can-search-for-in-the-search-page)
     1. [Buttons on each result](#buttons-on-each-result)
     1. [Typing Unicode](#typing-unicode)
  1. [Further details](#further-details)
@@ -116,7 +116,7 @@ against a substring of a definition's name, type signature or module.
 `*` stands for any run of characters and `?` for one, and `\*` for a
 literal star, since `*` occurs in names such as `ℤ*-assoc`, the same
 wildcard syntax the [browser-based
-search](#what-you-can-search-for-in-the-browser-page) uses.
+search](#what-you-can-search-for-in-the-search-page) uses.
 
 <sub>[Table of contents](#table-of-contents)</sub>
 
@@ -165,7 +165,7 @@ that never shows up in a definition's own signature.
 
 <sub>[Table of contents](#table-of-contents)</sub>
 
-## Using the browser search page
+## Using the search page
 
 ### Overview
 
@@ -189,7 +189,7 @@ piling one up per keystroke, so the back button has nothing to undo.
 
 <sub>[Table of contents](#table-of-contents)</sub>
 
-### What you can search for in the browser page
+### What you can search for in the search page
 
 * **Definitions.** We index every publicly visible name in the
   TypeTopology repository, including records, datatypes, fields and
@@ -313,7 +313,7 @@ was found with, and any hypothesis, such as `fe : funext 𝓤 𝓥` or a
 whole record's worth of structure, taken by an enclosing module rather
 than repeated in the signature itself, since that never shows up any
 other way. We sort it by name, so several definitions sharing one name
-sit together. It serves the same purpose the browser page does, aimed
+sit together. It serves the same purpose the search page does, aimed
 instead at a terminal and a text editor, for looking up an exact name
 and type before writing code against it, or for checking whether
 TypeTopology already has what is needed rather than reproving it.
