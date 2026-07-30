@@ -26,11 +26,11 @@ page](https://martinescardo.github.io/TypeTopologySearch.html) and an
     1. [Typing Unicode](#typing-unicode)
  1. [Further details](#further-details)
     1. [Generating the index](#generating-the-index)
-       1. [Generating it yourself](#generating-it-yourself)
-       1. [The generated index files](#the-generated-index-files)
+    1. [Generating it yourself](#generating-it-yourself)
+    1. [The generated index files](#the-generated-index-files)
     1. [The concept vocabulary](#the-concept-vocabulary)
-       1. [Adding a concept](#adding-a-concept)
-       1. [The Unicode escape table](#the-unicode-escape-table)
+    1. [Adding a concept](#adding-a-concept)
+    1. [The Unicode escape table](#the-unicode-escape-table)
     1. [How the search is implemented](#how-the-search-is-implemented)
     1. [Other Makefile targets](#other-makefile-targets)
 
@@ -294,7 +294,7 @@ eleven ways `\:` alone knows how to type a colon.
 
 ### Generating the index
 
-#### Generating it yourself
+### Generating it yourself
 
     ./generate-search-page /path/to/TypeTopology
     ./generate-definitions /path/to/TypeTopology
@@ -329,7 +329,7 @@ file. Useful options:
 
 <sub>[Table of contents](#table-of-contents)</sub>
 
-#### The generated index files
+### The generated index files
 
 `Definitions.txt` is for grep rather than browsing. There is no HTML,
 no pagination, everything on one line, namely a name, its signature
@@ -362,7 +362,7 @@ form suited to being read directly.
 
 ### The concept vocabulary
 
-#### Adding a concept
+### Adding a concept
 
 Append a line to `concepts.tsv`, which has five tab-separated columns,
 namely the concept, a pattern for finding it in the commentary, a
@@ -385,7 +385,7 @@ since a name that seems obvious is often not the one the library uses.
 
 <sub>[Table of contents](#table-of-contents)</sub>
 
-#### The Unicode escape table
+### The Unicode escape table
 
 `agda-input-escapes.json` powers the `\to`/`\MCU` typing
 described above. It is the emacs Agda input method's key table, dumped
