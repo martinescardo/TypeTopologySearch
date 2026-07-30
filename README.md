@@ -192,7 +192,7 @@ piling one up per keystroke, so the back button has nothing to undo.
 ### What you can search for in the browser page
 
 * **Definitions.** We index every publicly visible name in the
-  library, including records, datatypes, fields and
+  TypeTopology repository, including records, datatypes, fields and
   constructors. Each links to where it is defined in the rendered
   Agda, and, when it has one, shows its type too, so most of the time
   you can tell whether a hit is the one you want without leaving the
