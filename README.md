@@ -30,6 +30,10 @@ page](https://martinescardo.github.io/TypeTopologySearch.html) and an
 
 ## Installing the Emacs command
 
+See the [Makefile](#makefile) for a `make install` command that does
+everything below automatically, with nothing left to configure by
+hand. What follows is the manual equivalent.
+
     (add-to-list 'load-path "/path/to/TypeTopologySearch")
     (setq typetopology-search-checkout-root "/path/to/TypeTopology")
     (require 'typetopology-search)
@@ -43,7 +47,8 @@ works.
 
 ## Compiling it
 
-Byte-compiling is optional. Run
+`make install` (see the [Makefile](#makefile)) does this too.
+Byte-compiling is optional on its own. Run
 
     ./compile-emacs-command
 
@@ -215,12 +220,13 @@ eleven ways `\:` alone knows how to type a colon.
     ./generate-search-page /path/to/TypeTopology
     ./generate-definitions /path/to/TypeTopology
 
-We provide two thin wrapper scripts for the common case. The first
-writes `search.html`. The second writes `Definitions.tsv`, the same
-way `typetopology-search.el`'s bootstrap does. Both call
-`agda-index.py` with `--typetopology` set to their one argument. Read
-on for what that script takes directly, for anything these two do not
-cover.
+We provide two thin wrapper scripts for the common case, also runnable
+as `make search-page` and `make definitions` (see the
+[Makefile](#makefile)). The first writes `search.html`. The second
+writes `Definitions.tsv`, the same way `typetopology-search.el`'s
+bootstrap does. Both call `agda-index.py` with `--typetopology` set to
+their one argument. Read on for what that script takes directly, for
+anything these two do not cover.
 
 When running the script `agda-index.py`, the option `--typetopology
 <path/to/TypeTopology>` must be given.
@@ -301,7 +307,8 @@ accented Latin letters, and every spelled-out Greek letter such as
 `\Sigma`, alongside the terser `\GS` form Agda's own file defines
 directly, only exist once Emacs's own Quail machinery has resolved them
 at load time, not as literal text anywhere in Agda's own `agda-input.el`.
-To regenerate it:
+To regenerate it, also runnable as `make agda-input-dump` (see the
+[Makefile](#makefile)):
 
     ./generate-agda-input-dump
 
