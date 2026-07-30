@@ -16,9 +16,12 @@
 ;; data from Definitions.tsv, next to it, and builds
 ;; that file itself (by running agda-index.py --emacs-index, also next
 ;; to it) the first time it is needed and is not there yet -- no
-;; separate manual step. It is not, after that, kept in sync with the
-;; source automatically; running `typetopology-search-regenerate-index'
-;; after adding or renaming things is what picks up the difference.
+;; separate manual step. After that, `typetopology-search-prompt-to-regenerate'
+;; (on by default) notices, cheaply, whenever the source has definitions
+;; newer than the index and asks, once, whether to rebuild before
+;; searching; `typetopology-search-regenerate-index' remains the manual
+;; way to force this at any time, and turning that variable off goes
+;; back to relying on it exclusively.
 
 ;;; Code:
 
@@ -83,6 +86,26 @@ whichever one this points at in sync with this file's own version
 (the same checkout, or the same commit) rather than pointing it at an
 unrelated or older copy."
   :type '(choice file (const :tag "Never regenerate automatically" nil))
+  :group 'typetopology-search)
+
+(defcustom typetopology-search-prompt-to-regenerate t
+  "Whether `typetopology-search--ensure-loaded' checks the TypeTopology
+source for definitions newer than `typetopology-search-file' and, when
+it finds any, asks -- once, right before showing results -- whether to
+rebuild the index first or search the existing one as it is.
+
+The check itself only compares file modification times (the same
+comparison `agda-index.py's own render() makes for the html rendering,
+aimed at the index instead), so it costs nothing noticeable even when
+this is on; answering \"no\" is remembered, so the same staleness is
+not asked about again on every subsequent search, only a further edit
+past that point.
+
+Set to nil for the old, fully manual behaviour instead: the index is
+still built once automatically the very first time it does not exist
+yet, but never checked or refreshed again except by an explicit
+`typetopology-search-regenerate-index'."
+  :type 'boolean
   :group 'typetopology-search)
 
 ;; ------------------------------------------------------------- data
@@ -185,9 +208,10 @@ lenient on purpose, so one bad line does not take the whole index down)."
   "Run `typetopology-search-generator' to (re)produce
 `typetopology-search-file'. Blocks Emacs for however long that takes --
 unavoidable the very first time, when there is nothing to search yet
-without it; a cold run (agda has to render the whole library first) is
-a minute or two, a warm one (the rendering is already up to date, only
-Definitions.tsv itself is regenerated) closer to ten seconds."
+without it; a cold run (agda has to typecheck and render the whole
+library first) takes a while, a warm one (the rendering is already up
+to date, only Definitions.tsv itself is regenerated) closer to ten
+seconds."
   (unless (and typetopology-search-generator
               (file-exists-p typetopology-search-generator))
     (user-error "No TypeTopology index at %s, and no generator script to \
@@ -201,7 +225,7 @@ to an index built elsewhere"
 subdirectory -- set it to your TypeTopology directory"
                 typetopology-search-checkout-root))
   (message "TypeTopology: building the search index (agda-index.py \
---emacs-index) -- this can take a minute or two the first time...")
+--emacs-index) -- this can take a while the first time...")
   (with-temp-buffer
     ;; --source and --out are passed explicitly rather than left to
     ;; agda-index.py's own defaults (a directory relative to itself),
@@ -235,8 +259,8 @@ subdirectory -- set it to your TypeTopology directory"
 ;;;###autoload
 (defun typetopology-search-regenerate-index ()
   "Rebuild the TypeTopology search index by hand -- after adding,
-renaming, or removing definitions, say, since that is not picked up
-automatically otherwise."
+renaming, or removing definitions, say, when you would rather not wait
+for (or have turned off `typetopology-search-prompt-to-regenerate')."
   (interactive)
   (typetopology-search--regenerate)
   (typetopology-search--load typetopology-search-file)
@@ -244,12 +268,86 @@ automatically otherwise."
         (file-attribute-modification-time
          (file-attributes typetopology-search-file))))
 
+;; ------------------------------------------------------ staleness prompt
+
+(defun typetopology-search--git-tracked-agda-files ()
+  "The TypeTopology source's own .lagda/.agda files, as `git ls-files'
+reports them under `typetopology-search--source-root' -- the same list
+`agda-index.py's own render() checks to decide whether the html
+rendering needs a rebuild. nil, rather than an error, when the source
+root is not a git checkout or git itself is not on $PATH -- either way
+there is simply nothing to compare mtimes against, so staleness
+detection quietly does not apply."
+  (let ((root (typetopology-search--source-root)))
+    (and (executable-find "git")
+        (file-directory-p root)
+        (with-temp-buffer
+          (let ((default-directory root))
+            (when (zerop (call-process "git" nil t nil "ls-files"
+                                       "--" "*.lagda" "*.agda"))
+              (split-string (buffer-string) "\n" t)))))))
+
+(defun typetopology-search--newest-source-mtime ()
+  "The most recent modification time among
+`typetopology-search--git-tracked-agda-files', or nil when that list
+itself is nil -- in which case staleness is never suspected at all."
+  (let ((root (typetopology-search--source-root))
+        (newest nil))
+    (dolist (f (typetopology-search--git-tracked-agda-files))
+      (let* ((full (expand-file-name f root))
+             (mtime (and (file-exists-p full)
+                        (file-attribute-modification-time
+                         (file-attributes full)))))
+        (when (and mtime (or (not newest) (time-less-p newest mtime)))
+          (setq newest mtime))))
+    newest))
+
+(defvar typetopology-search--declined-stale-mtime nil
+  "The newest source mtime `typetopology-search--maybe-prompt-to-regenerate'
+last asked about and was told \"no\" to -- remembered so the same
+staleness is not asked about again on every subsequent search, only a
+further edit past this point.")
+
+(defun typetopology-search--maybe-prompt-to-regenerate ()
+  "When `typetopology-search-prompt-to-regenerate' is non-nil and the
+source has a definition newer than `typetopology-search-file', ask
+once whether to rebuild it now (blocking, the same as
+`typetopology-search-regenerate-index') before continuing -- answering
+\"no\" just searches the existing index, and is not asked again until a
+further edit makes the source newer still."
+  (when (and typetopology-search-prompt-to-regenerate
+            typetopology-search-generator
+            (file-exists-p typetopology-search-file))
+    (let ((newest (typetopology-search--newest-source-mtime))
+          (index-mtime (file-attribute-modification-time
+                        (file-attributes typetopology-search-file))))
+      (when (and newest
+                (time-less-p index-mtime newest)
+                (not (and typetopology-search--declined-stale-mtime
+                          (not (time-less-p
+                                typetopology-search--declined-stale-mtime
+                                newest)))))
+        (if (y-or-n-p "TypeTopology: the index looks older than the source \
+-- regenerate it now? (search still works either way, just less \
+accurately without it. You can manually regenerate the index at any \
+time by doing M-x typetopology-search-regenerate-index.) ")
+            (progn
+              (typetopology-search--regenerate)
+              (typetopology-search--load typetopology-search-file)
+              (setq typetopology-search--loaded-mtime
+                    (file-attribute-modification-time
+                     (file-attributes typetopology-search-file)))
+              (setq typetopology-search--declined-stale-mtime nil))
+          (setq typetopology-search--declined-stale-mtime newest)
+          (message "TypeTopology: searching the existing index as is."))))))
+
 (defun typetopology-search--ensure-loaded ()
   "Load the index, regenerating it first if it does not exist yet and a
 generator script is available (see `typetopology-search-generator'),
 and reload it whenever the file's own mtime has changed since --
 picking up a `typetopology-search-regenerate-index' or a by-hand rerun
-of agda-index.py alike, with no separate reload step to remember."
+of agda-index.py alike, with no separate reload step to remember.
+Finally, see `typetopology-search--maybe-prompt-to-regenerate'."
   (unless (and typetopology-search-file (file-exists-p typetopology-search-file))
     (if typetopology-search-generator
         (typetopology-search--regenerate)
@@ -261,7 +359,8 @@ agda-index.py --emacs-index, or set typetopology-search-file"
     (unless (and typetopology-search--entries
                  (equal mtime typetopology-search--loaded-mtime))
       (typetopology-search--load typetopology-search-file)
-      (setq typetopology-search--loaded-mtime mtime))))
+      (setq typetopology-search--loaded-mtime mtime)))
+  (typetopology-search--maybe-prompt-to-regenerate))
 
 ;; ------------------------------------------------------- picking a result
 

@@ -329,6 +329,145 @@ have caught it."
           (should typetopology-search--loaded-mtime))
       (delete-directory dir t))))
 
+;; ------------------------------------------------------- staleness prompt
+
+(defun tt-search--init-git-repo (dir)
+  "Turn DIR into a minimal git repo, quietly -- just enough for `git
+ls-files' to have something of its own to report."
+  (let ((default-directory dir))
+    (call-process "git" nil nil nil "init" "-q")
+    (call-process "git" nil nil nil "config" "user.email" "test@example.com")
+    (call-process "git" nil nil nil "config" "user.name" "Test")))
+
+(ert-deftest tt-search-newest-source-mtime-nil-without-git ()
+  "A source/ that is not a git checkout at all -- nil, not an error, so
+staleness is simply never suspected."
+  (let* ((dir (make-temp-file "tt-search-nogit" t))
+         (typetopology-search-checkout-root dir))
+    (unwind-protect
+        (progn
+          (make-directory (typetopology-search--source-root))
+          (should-not (typetopology-search--newest-source-mtime)))
+      (delete-directory dir t))))
+
+(ert-deftest tt-search-newest-source-mtime-tracks-git-files ()
+  "A real git-tracked .lagda file is found and its mtime read."
+  (let* ((dir (make-temp-file "tt-search-git" t))
+         (typetopology-search-checkout-root dir)
+         (source (typetopology-search--source-root)))
+    (unwind-protect
+        (progn
+          (make-directory source t)
+          (tt-search--init-git-repo source)
+          (with-temp-file (expand-file-name "M.lagda" source) (insert "-- x"))
+          (let ((default-directory source))
+            (call-process "git" nil nil nil "add" "M.lagda"))
+          (should (typetopology-search--newest-source-mtime)))
+      (delete-directory dir t))))
+
+(ert-deftest tt-search-maybe-prompt-noop-when-disabled ()
+  "`typetopology-search-prompt-to-regenerate' set to nil -- the old,
+fully manual behaviour -- never even asks."
+  (let ((typetopology-search-prompt-to-regenerate nil)
+        (prompted nil))
+    (cl-letf (((symbol-function 'y-or-n-p) (lambda (&rest _) (setq prompted t) t)))
+      (typetopology-search--maybe-prompt-to-regenerate))
+    (should-not prompted)))
+
+(ert-deftest tt-search-maybe-prompt-noop-when-not-stale ()
+  "Nothing newer in the source (stubbed nil, as when there is no git
+checkout to compare against) -- no prompt."
+  (let* ((file (make-temp-file "tt-search-idx" nil ".tsv"))
+         (typetopology-search-file file)
+         (typetopology-search-generator "/bin/true")
+         (typetopology-search-prompt-to-regenerate t)
+         (typetopology-search--declined-stale-mtime nil)
+         (prompted nil))
+    (unwind-protect
+        (progn
+          (with-temp-file file (insert "x"))
+          (cl-letf (((symbol-function 'typetopology-search--newest-source-mtime)
+                     (lambda () nil))
+                    ((symbol-function 'y-or-n-p)
+                     (lambda (&rest _) (setq prompted t) t)))
+            (typetopology-search--maybe-prompt-to-regenerate))
+          (should-not prompted))
+      (delete-file file))))
+
+(ert-deftest tt-search-maybe-prompt-regenerates-on-yes ()
+  "Answering yes rebuilds and reloads the index, the same as
+`typetopology-search-regenerate-index' does by hand."
+  (let* ((dir (make-temp-file "tt-search-gen" t))
+         (typetopology-search-generator (expand-file-name "agda-index.py" dir))
+         (typetopology-search-checkout-root dir)
+         (typetopology-search-file (expand-file-name "Definitions.tsv" dir))
+         (typetopology-search-prompt-to-regenerate t)
+         (typetopology-search--declined-stale-mtime nil)
+         (typetopology-search--entries nil)
+         (typetopology-search--loaded-mtime nil))
+    (unwind-protect
+        (progn
+          (make-directory (expand-file-name "source" dir))
+          (tt-search--write-fake-generator typetopology-search-generator)
+          (with-temp-file typetopology-search-file (insert "placeholder\n"))
+          (set-file-times typetopology-search-file (time-subtract (current-time) 100))
+          (cl-letf (((symbol-function 'typetopology-search--newest-source-mtime)
+                     (lambda () (current-time)))
+                    ((symbol-function 'y-or-n-p) (lambda (&rest _) t)))
+            (typetopology-search--maybe-prompt-to-regenerate))
+          (should (= (length typetopology-search--entries) 1))
+          (should (equal (typetopology-search-entry-name
+                          (car typetopology-search--entries))
+                         "foo")))
+      (delete-directory dir t))))
+
+(ert-deftest tt-search-maybe-prompt-remembers-decline ()
+  "Answering no once is not asked again for the same staleness."
+  (let* ((file (make-temp-file "tt-search-idx" nil ".tsv"))
+         (typetopology-search-file file)
+         (typetopology-search-generator "/bin/true")
+         (typetopology-search-prompt-to-regenerate t)
+         (typetopology-search--declined-stale-mtime nil)
+         (calls 0)
+         (fixed-newest (current-time)))
+    (unwind-protect
+        (progn
+          (with-temp-file file (insert "x"))
+          (set-file-times file (time-subtract fixed-newest 100))
+          (cl-letf (((symbol-function 'typetopology-search--newest-source-mtime)
+                     (lambda () fixed-newest))
+                    ((symbol-function 'y-or-n-p)
+                     (lambda (&rest _) (cl-incf calls) nil)))
+            (typetopology-search--maybe-prompt-to-regenerate)
+            (typetopology-search--maybe-prompt-to-regenerate))
+          (should (= calls 1)))
+      (delete-file file))))
+
+(ert-deftest tt-search-maybe-prompt-reprompts-after-further-edit ()
+  "A further edit past the declined mtime is asked about again."
+  (let* ((file (make-temp-file "tt-search-idx" nil ".tsv"))
+         (typetopology-search-file file)
+         (typetopology-search-generator "/bin/true")
+         (typetopology-search-prompt-to-regenerate t)
+         (typetopology-search--declined-stale-mtime nil)
+         (calls 0)
+         (t1 (current-time))
+         (t2 (time-add (current-time) 5)))
+    (unwind-protect
+        (progn
+          (with-temp-file file (insert "x"))
+          (set-file-times file (time-subtract t1 100))
+          (cl-letf (((symbol-function 'typetopology-search--newest-source-mtime)
+                     (lambda () t1))
+                    ((symbol-function 'y-or-n-p) (lambda (&rest _) (cl-incf calls) nil)))
+            (typetopology-search--maybe-prompt-to-regenerate))
+          (cl-letf (((symbol-function 'typetopology-search--newest-source-mtime)
+                     (lambda () t2))
+                    ((symbol-function 'y-or-n-p) (lambda (&rest _) (cl-incf calls) nil)))
+            (typetopology-search--maybe-prompt-to-regenerate))
+          (should (= calls 2)))
+      (delete-file file))))
+
 ;; ------------------------------------------------------- action decision
 
 (ert-deftest tt-search-decide-action-first-time-forces-menu ()

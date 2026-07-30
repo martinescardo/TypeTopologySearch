@@ -16,9 +16,6 @@ page](https://martinescardo.github.io/TypeTopologySearch.html) and an
     1. [Acting on a result](#acting-on-a-result)
     1. [What you can search for](#what-you-can-search-for)
     1. [In detail](#in-detail)
- 1. [Maintaining the Emacs command](#maintaining-the-emacs-command)
-    1. [Finding agda-index.py](#finding-agda-indexpy)
-    1. [Regenerating the index](#regenerating-the-index)
  1. [Using the browser search page](#using-the-browser-search-page)
     1. [Overview](#overview)
     1. [What you can search for in the browser page](#what-you-can-search-for-in-the-browser-page)
@@ -27,6 +24,8 @@ page](https://martinescardo.github.io/TypeTopologySearch.html) and an
  1. [Further details](#further-details)
     1. [Generating the index](#generating-the-index)
     1. [The generated index files](#the-generated-index-files)
+    1. [Finding agda-index.py](#finding-agda-indexpy)
+    1. [Regenerating the index](#regenerating-the-index)
     1. [The concept vocabulary](#the-concept-vocabulary)
     1. [The Unicode escape table](#the-unicode-escape-table)
     1. [How the search is implemented](#how-the-search-is-implemented)
@@ -162,27 +161,6 @@ Up and down arrows move a highlighted selection over that list.  Each
 result shows an "(assumes: ...)" clause, an enclosing-module
 hypothesis, such as `funext` or a whole record's worth of structure,
 that never shows up in a definition's own signature.
-
-<sub>[Table of contents](#table-of-contents)</sub>
-
-## Maintaining the Emacs command
-
-### Finding agda-index.py
-
-We look for the file `agda-index.py` in the same directory as
-`typetopology-search.el` first. If `typetopology-search.el` was copied
-somewhere else on its own, with no such sibling, we fall back to
-whatever `agda-index.py` is found on `$PATH` instead. Adding this
-repository to `$PATH`, or just a symlink to `agda-index.py` there,
-both work.
-
-<sub>[Table of contents](#table-of-contents)</sub>
-
-### Regenerating the index
-
-The index is not kept in sync with the source automatically after that
-first build. Run `M-x typetopology-search-regenerate-index` after
-adding, renaming, or removing definitions, to pick up the difference.
 
 <sub>[Table of contents](#table-of-contents)</sub>
 
@@ -353,6 +331,28 @@ that one script.
 
 The concept vocabulary belongs to `concepts.tsv` instead, already in a
 form suited to being read directly.
+
+<sub>[Table of contents](#table-of-contents)</sub>
+
+### Finding agda-index.py
+
+We look for the file `agda-index.py` in the same directory as
+`typetopology-search.el` first. If `typetopology-search.el` was copied
+somewhere else on its own, with no such sibling, we fall back to
+whatever `agda-index.py` is found on `$PATH` instead. Adding this
+repository to `$PATH`, or just a symlink to `agda-index.py` there,
+both work.
+
+<sub>[Table of contents](#table-of-contents)</sub>
+
+### Regenerating the index
+
+`typetopology-search-prompt-to-regenerate`, on by default, notices
+whenever the source has a definition newer than the index and asks,
+once, whether to rebuild before searching -- search still works either
+way, just less accurately if declined, and declining is not asked
+again until a further edit. Set it to nil to rely purely on `M-x
+typetopology-search-regenerate-index` by hand instead.
 
 <sub>[Table of contents](#table-of-contents)</sub>
 
