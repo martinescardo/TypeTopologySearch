@@ -199,7 +199,7 @@ piling one up per keystroke, so the back button has nothing to undo.
   page. We keep a record or datatype's own parameters in the preview.
 
   With "search within type signatures too", a word can also match
-  inside that type rather than the name. A hypothesis taken once as a
+  inside that type rather than just the name. A hypothesis taken once as a
   module parameter, rather than repeated in each individual signature,
   never appears in any individual definition's own type at all. "List
   every enclosing assumption" shows the parameter list of every module
