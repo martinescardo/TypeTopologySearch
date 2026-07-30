@@ -12,6 +12,7 @@
 __pycache__/
 *.pyc
 *.elc
+*~
 
 # scratch files from regenerating agda-input-escapes.json -- see README.md,
 # "The Unicode escape table"
