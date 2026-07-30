@@ -14,7 +14,7 @@ page](https://martinescardo.github.io/TypeTopologySearch.html) and an
  1. [Using the Emacs command](#using-the-emacs-command)
     1. [Basics](#basics)
     1. [Acting on a result](#acting-on-a-result)
-    1. [What you can search for](#what-you-can-search-for)
+    1. [What you can search for in Emacs](#what-you-can-search-for-in-emacs)
     1. [In detail](#in-detail)
  1. [Using the search page](#using-the-search-page)
     1. [Overview](#overview)
@@ -109,7 +109,7 @@ opens the action menu for the currently selected result.
 
 <sub>[Table of contents](#table-of-contents)</sub>
 
-### What you can search for
+### What you can search for in Emacs
 
 Several words take the intersection of the results, case-insensitively,
 against a substring of a definition's name, type signature or module.
