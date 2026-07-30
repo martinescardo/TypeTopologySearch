@@ -125,7 +125,8 @@ search](#what-you-can-search-for-in-the-browser-page) uses.
 Requiring `typetopology-search.el` also defines `typetopology-mode`, a
 minor mode that attaches itself to every agda2-mode buffer automatically,
 via `agda2-mode-hook`, and binds `C-c C-g` there to the search command.
-On first use, this command builds a TypeTopology index.
+On first use, this command builds a TypeTopology index if it isn't
+already built.
 
 `typetopology-search` looks a name or a piece of a type signature up
 against the whole library, not just what the current buffer happens to
