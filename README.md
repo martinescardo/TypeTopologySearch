@@ -195,10 +195,11 @@ has a build time stamp.
 * **Contributors.** We list the people of TypeTopology's own top-level
   `README.md`, with the modules that name them.
 
-Several words all have to match, so `compact ordinal` asks for compactness
-within the ordinals, matching a word against either a definition or its
-module. `*` stands for any run of characters and `?` for one, and `\*` for
-a literal star, since `*` occurs in names such as `ℤ*-assoc`.
+Several words all have to match, so `compact ordinal` asks to match
+both compact and ordinal, matching a word against either a definition
+or its module. `*` stands for any run of characters and `?` for one,
+and `\*` for a literal star, since `*` occurs in names such as
+`ℤ*-assoc`.
 
 A word followed by `in` followed by another word restricts the search
 to one directory or file. For instance, `compact in Ordinals.Comp`
