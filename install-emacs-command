@@ -38,7 +38,7 @@ fi
 if [ -f "$initfile" ] && grep -qE "^[[:space:]]*\(require 'typetopology-search\)" "$initfile"; then
     echo "typetopology-search already set up in $initfile"
 else
-    printf "\n(add-to-list 'load-path \"%s\")\n(setq typetopology-search-checkout-root \"%s\")\n(require 'typetopology-search)\n" \
+    printf "\n;; automatically added typetopology-search configuration\n(add-to-list 'load-path \"%s\")\n(setq typetopology-search-checkout-root \"%s\")\n(require 'typetopology-search)\n" \
            "$target" "$typetopology" >> "$initfile"
     echo "Added typetopology-search setup to $initfile"
 fi
