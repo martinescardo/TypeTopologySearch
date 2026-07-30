@@ -276,11 +276,12 @@ eleven ways `\:` alone knows how to type a colon.
 
 We provide two thin wrapper scripts for the common case, also runnable
 as `make search-page` and `make definitions` (see [Other Makefile
-targets](#other-makefile-targets)). The first writes `search.html`. The second
-writes `Definitions.tsv`, the same way `typetopology-search.el`'s
-bootstrap does. Both call `agda-index.py` with `--typetopology` set to
-their one argument. Read on for what that script takes directly, for
-anything these two do not cover.
+targets](#other-makefile-targets)). The first writes
+`TypeTopologySearch.html`. The second writes `Definitions.tsv`, the
+same way `typetopology-search.el`'s bootstrap does. Both call
+`agda-index.py` with `--typetopology` set to their one argument. Read
+on for what that script takes directly, for anything these two do not
+cover.
 
 When running the script `agda-index.py`, the option `--typetopology
 <path/to/TypeTopology>` must be given.
@@ -297,7 +298,7 @@ file. Useful options:
     --json          also write definitions.json, for other tools
     --defs-index    also write Definitions.txt, a flat plain-text index
     --emacs-index   also write Definitions.tsv, for typetopology-search.el
-    --no-html       skip search.html
+    --no-html       skip TypeTopologySearch.html
                     concepts.tsv and agda-input-escapes.json are then
                     not needed; typetopology-search.el's bootstrap
                     uses this.

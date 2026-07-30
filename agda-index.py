@@ -12,8 +12,8 @@ agda, pass it:
 
     agda-index.py --typetopology /path/to/TypeTopology --html <dir>
 
-This writes search.html, a self-contained interactive search page, which is
-deployed by hand to
+This writes TypeTopologySearch.html, a self-contained interactive search
+page, which is deployed by hand to
 
     https://martinescardo.github.io/TypeTopologySearch.html
 
@@ -1135,8 +1135,8 @@ function escapeExpand(){
   return true;
 }
 // The clipboard API needs a secure context, which a plain file:// page (see
-// README.md -- opening search.html directly is a supported way to use it)
-// is not, so a hidden-textarea fallback covers that case too.
+// README.md -- opening TypeTopologySearch.html directly is a supported way
+// to use it) is not, so a hidden-textarea fallback covers that case too.
 function copyText(s){
   if(navigator.clipboard && navigator.clipboard.writeText)
     return navigator.clipboard.writeText(s);
@@ -1328,7 +1328,7 @@ def write_search_page(rows, out, site, table, body, people, unsafe, escapes, htm
         showaxioms=json.dumps(SHOW_AXIOM_BADGES),
         esc=open(escapes, encoding="utf-8").read(),
         builddate=datetime.date.today().strftime("%-d %B %Y"))
-    open(f"{out}/search.html", "w", encoding="utf-8").write(page)
+    open(f"{out}/TypeTopologySearch.html", "w", encoding="utf-8").write(page)
 
 
 def render(source, entry, htmldir, agda):
@@ -1388,7 +1388,7 @@ def main():
                    help="also write Definitions.tsv, a tab-separated index for "
                         "typetopology-search.el (or any other program)")
     p.add_argument("--no-html", action="store_true",
-                   help="skip writing search.html -- concepts.tsv and "
+                   help="skip writing TypeTopologySearch.html -- concepts.tsv and "
                         "agda-input-escapes.json are then not needed at all, only "
                         "this script and the source itself, which is what "
                         "typetopology-search.el's own self-bootstrap uses")

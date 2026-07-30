@@ -576,7 +576,7 @@ An empty query matches nothing: there is no value in a wall of all
 (WORD . REGEXP pairs from `typetopology-search--terms') within
 START..END of the current buffer, case-insensitively -- the same
 matches `typetopology-search--filter' itself matched on, the same way
-search.html already highlights a match within a result. A plain word
+TypeTopologySearch.html already highlights a match within a result. A plain word
 (REGEXP nil) is matched literally, not as a regexp, so a word
 containing regexp-special characters -- and TypeTopology signatures
 are full of them -- still highlights correctly; a wildcard term

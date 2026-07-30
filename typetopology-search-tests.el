@@ -901,7 +901,7 @@ its literal `*' when escaped, without `*' acting as a wildcard there."
                    '("ℤ*-assoc")))))
 
 (ert-deftest tt-search-filter-ranks-exact-name-match-first ()
-  "The actual bug reported in real use: search.html correctly puts
+  "The actual bug reported in real use: TypeTopologySearch.html correctly puts
 `is-prop' itself first for the query \"is-prop\"; this file, before
 this fix, had no ranking at all and put whatever came first
 alphabetically ahead of it (\"A-is-prop\", since entries only ever kept
