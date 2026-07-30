@@ -405,14 +405,17 @@ a match exists in one of."
 (defun typetopology-search--entry-area (e)
   "How far down E sinks for the area it lives in, before relevance is
 looked at at all -- the same `AREA' the browser search page uses, so
-the two agree here too. Lower is better: 2 for `deprecated', since a
-superseded definition is never the one being looked for, 1 for `MGS',
-since those lecture notes redevelop from scratch names the library
-already has, so an unqualified search for one of them means the
-library's own, and 0 for every other directory, which is to say all of
-them share the top rank and are ordered by relevance alone."
+the two agree here too. Lower is better: 3 for `Unsafe', since what it
+defines relies on principles the rest of the library does without, 2
+for `deprecated', since a superseded definition is never the one being
+looked for, 1 for `MGS', since those lecture notes redevelop from
+scratch names the library already has, so an unqualified search for one
+of them means the library's own, and 0 for every other directory, which
+is to say all of them share the top rank and are ordered by relevance
+alone."
   (let ((mod (typetopology-search-entry-importmod e)))
-    (cond ((string-prefix-p "deprecated." mod) 2)
+    (cond ((string-prefix-p "Unsafe." mod) 3)
+          ((string-prefix-p "deprecated." mod) 2)
           ((string-prefix-p "MGS." mod) 1)
           (t 0))))
 
@@ -427,9 +430,9 @@ lower-case)."
 of QUERY, case-insensitively, in any order -- simple and predictable
 over clever, and enough to find a name, a piece of a signature, or a
 module by any of their terms at once -- ranked by
-`typetopology-search--entry-area' first, so that `deprecated' sinks
-below everything and `MGS' just above it, then most relevant first by
-`typetopology-search--entry-score', ties broken by use count
+`typetopology-search--entry-area' first, so that `Unsafe' sinks below
+everything, `deprecated' just above it and `MGS' above that, then most
+relevant first by `typetopology-search--entry-score', ties broken by use count
 (descending), the identical three-key sort the browser search page
 uses, so the two never disagree about which result is \"first\": without
 this, \"is-prop\" landed on \"A-is-prop\" ahead of `is-prop' itself,

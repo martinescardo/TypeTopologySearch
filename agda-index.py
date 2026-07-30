@@ -782,12 +782,15 @@ const GENERIC=new Set(["type","types","space","spaces","theory","principle",
 // not where a concept should be said to live.
 const SIDELINE=/^(MGS|gist|deprecated|Unsafe|TWA)\./;
 // How far down a result sinks for the area it lives in, before relevance is
-// looked at at all: deprecated last of all, since a superseded definition is
-// never the one being looked for, and MGS just above it, since those lecture
-// notes redevelop from scratch names the library already has, so an
-// unqualified search for one of them means the library's own. Everything
-// else shares the top rank and is ordered by relevance alone, as before.
-const AREA=m=>/^deprecated\./.test(m)?2:/^MGS\./.test(m)?1:0;
+// looked at at all: Unsafe last of all, since what it defines relies on
+// principles the rest of the library does without, deprecated just above it,
+// since a superseded definition is never the one being looked for, and MGS
+// above that, since those lecture notes redevelop from scratch names the
+// library already has, so an unqualified search for one of them means the
+// library's own. Everything else shares the top rank and is ordered by
+// relevance alone, as before.
+const AREA=m=>/^Unsafe\./.test(m)?3:/^deprecated\./.test(m)?2
+             :/^MGS\./.test(m)?1:0;
 const q=document.getElementById("q"), out=document.getElementById("out"),
       useMods=document.getElementById("mods"), useSigs=document.getElementById("sigs"),
       useAllScope=document.getElementById("allscope"),

@@ -106,15 +106,17 @@ a hyphenated part of the name, then anywhere else in the name, then a
 word found only in the signature or module, ties broken by use count.
 
 Before any of that, though, a result sinks for the area it lives in.
-Everything in `deprecated` comes last of all, since a superseded
-definition is never the one being looked for, and everything in `MGS`
-just above it, since those lecture notes redevelop from scratch names
-the library already has, so an unqualified search for one of them
-means the library's own. Every other directory shares the top rank and
-is ordered by relevance alone. This outranks relevance itself: an
-exact name match in `deprecated` still comes after a mere substring
-match in a live module. Searching `in deprecated` or `in MGS`
-explicitly is unaffected, since the demotion is then uniform.
+Everything in `Unsafe` comes last of all, since what it defines relies
+on principles the rest of the library does without, everything in
+`deprecated` just above it, since a superseded definition is never the
+one being looked for, and everything in `MGS` above that, since those
+lecture notes redevelop from scratch names the library already has, so
+an unqualified search for one of them means the library's own. Every
+other directory shares the top rank and is ordered by relevance alone.
+This outranks relevance itself: an exact name match in `Unsafe` or
+`deprecated` still comes after a mere substring match in a live
+module. Searching `in Unsafe`, `in deprecated` or `in MGS` explicitly
+is unaffected, since the demotion is then uniform.
 
 This is the identical ranking the browser search uses, so the two never
 disagree about which result comes first.
@@ -209,9 +211,9 @@ and contributors alike, so a concept only survives `in` if one of its
 own definitions or one of its discussing modules lies within the path,
 and only those matching modules are then shown.
 
-Results are ranked the same way the Emacs command ranks them, `deprecated`
-last and `MGS` next to last, described in [The Emacs command in
-detail](#the-emacs-command-in-detail).
+Results are ranked the same way the Emacs command ranks them, `Unsafe`
+last, `deprecated` next to last and `MGS` above those, described in
+[The Emacs command in detail](#the-emacs-command-in-detail).
 
 <sub>[Table of contents](#table-of-contents)</sub>
 
