@@ -35,7 +35,7 @@ else
     initfile="$HOME/.emacs"
 fi
 
-if [ -f "$initfile" ] && grep -qF "(require 'typetopology-search)" "$initfile"; then
+if [ -f "$initfile" ] && grep -qE "^[[:space:]]*\(require 'typetopology-search\)" "$initfile"; then
     echo "typetopology-search already set up in $initfile"
 else
     printf "\n(add-to-list 'load-path \"%s\")\n(setq typetopology-search-checkout-root \"%s\")\n(require 'typetopology-search)\n" \
