@@ -22,7 +22,6 @@ page](https://martinescardo.github.io/TypeTopologySearch.html) and an
  1. [Using the browser search page](#using-the-browser-search-page)
     1. [Overview](#overview)
     1. [What you can search for in the browser page](#what-you-can-search-for-in-the-browser-page)
- 1. [The browser page's interface](#the-browser-pages-interface)
     1. [Buttons on each result](#buttons-on-each-result)
     1. [Typing Unicode](#typing-unicode)
  1. [Generating the index](#generating-the-index)
@@ -266,8 +265,6 @@ clicked, it is entered into the search box and the search is run
 immediately.
 
 <sub>[Table of contents](#table-of-contents)</sub>
-
-## The browser page's interface
 
 ### Buttons on each result
 
