@@ -8,6 +8,7 @@ page](https://martinescardo.github.io/TypeTopologySearch.html) and an
 ## Table of contents
 
  1. [Installing the Emacs command](#installing-the-emacs-command)
+ 1. [Compiling it](#compiling-it)
  1. [Using the Emacs command](#using-the-emacs-command)
  1. [What you can search for in Emacs](#what-you-can-search-for-in-emacs)
  1. [The Emacs command in detail](#the-emacs-command-in-detail)
@@ -29,15 +30,24 @@ page](https://martinescardo.github.io/TypeTopologySearch.html) and an
 ## Installing the Emacs command
 
     (add-to-list 'load-path "/path/to/TypeTopologySearch")
-    (setq typetopology-search-source-root "/path/to/TypeTopology/source/")
+    (setq typetopology-search-checkout-root "/path/to/TypeTopology")
     (require 'typetopology-search)
 
 Make sure you have clones of this repository and TypeTopology, and point
-`typetopology-search-source-root` at the checkout's `source/` directory
-before requiring the file. The command `typetopology-search`
+`typetopology-search-checkout-root` at the TypeTopology directory before
+requiring the file. The command `typetopology-search`
 builds its own index the first time it is used. See
 [The Emacs command in detail](#the-emacs-command-in-detail) for how this
 works.
+
+## Compiling it
+
+Byte-compiling is optional. Run
+
+    ./compile-emacs-command
+
+once after cloning or pulling, and Emacs picks up the resulting
+`typetopology-search.elc` automatically from then on.
 
 ## Using the Emacs command
 

@@ -10,10 +10,10 @@
 ;; exist, and where", Agda's own command is for "given what I have
 ;; already imported, what exactly does this normalise to".
 ;;
-;; Set `typetopology-search-source-root' to your TypeTopology checkout's
-;; source/ directory before requiring this file (see README.md for why
-;; this can't just be guessed). From there, requiring it is the whole
-;; setup: it reads its data from Definitions.tsv, next to it, and builds
+;; Set `typetopology-search-checkout-root' to your TypeTopology directory
+;; before requiring this file (see README.md for why this can't just be
+;; guessed). From there, requiring it is the whole setup: it reads its
+;; data from Definitions.tsv, next to it, and builds
 ;; that file itself (by running agda-index.py --emacs-index, also next
 ;; to it) the first time it is needed and is not there yet -- no
 ;; separate manual step. It is not, after that, kept in sync with the
@@ -36,17 +36,20 @@
   :type 'file
   :group 'typetopology-search)
 
-(defcustom typetopology-search-source-root
+(defcustom typetopology-search-checkout-root
   (and load-file-name
-       (expand-file-name "../source/" (file-name-directory load-file-name)))
-  "The TypeTopology source directory, against which a definition's own
-FILE column in Definitions.tsv (itself relative) is resolved when
-jumping to source. The default guess (a directory named source next to
-this file) is right only by coincidence; set this explicitly, before
-requiring this file, to your own TypeTopology checkout's source/
-directory."
+       (expand-file-name ".." (file-name-directory load-file-name)))
+  "Your TypeTopology directory. Its source/ subdirectory is where a
+definition's own FILE column in Definitions.tsv (itself relative) is
+resolved when jumping to source. The default guess (this file's own
+parent directory) is right only by coincidence; set this explicitly,
+before requiring this file, to your own TypeTopology directory."
   :type 'directory
   :group 'typetopology-search)
+
+(defun typetopology-search--source-root ()
+  "`typetopology-search-checkout-root', with source/ appended."
+  (expand-file-name "source" typetopology-search-checkout-root))
 
 (defun typetopology-search--default-generator ()
   "Where agda-index.py is, by default: right next to this file, if it is
@@ -90,7 +93,7 @@ unrelated or older copy."
   name        ; bare identifier
   dispmod     ; module, with any inner submodule, for display
   importmod   ; module alone, what `open import' wants
-  file        ; source file, relative to typetopology-search-source-root
+  file        ; source file, relative to the TypeTopology source directory
   line        ; source line, 1-indexed
   uses        ; use count, an integer
   sig         ; signature, or ""
@@ -192,11 +195,11 @@ build it (typetopology-search-generator is %s) -- run \
 agda-index.py --emacs-index by hand, or set typetopology-search-file \
 to an index built elsewhere"
                 typetopology-search-file typetopology-search-generator))
-  (unless (and typetopology-search-source-root
-              (file-directory-p typetopology-search-source-root))
-    (user-error "typetopology-search-source-root (%s) is not a directory \
--- set it to wherever TypeTopology's own source/ actually is"
-                typetopology-search-source-root))
+  (unless (and typetopology-search-checkout-root
+              (file-directory-p (typetopology-search--source-root)))
+    (user-error "typetopology-search-checkout-root (%s) has no source/ \
+subdirectory -- set it to your TypeTopology directory"
+                typetopology-search-checkout-root))
   (message "TypeTopology: building the search index (agda-index.py \
 --emacs-index) -- this can take a minute or two the first time...")
   (with-temp-buffer
@@ -204,24 +207,24 @@ to an index built elsewhere"
     ;; agda-index.py's own defaults (a directory relative to itself),
     ;; since typetopology-search.el, the generator, the source tree and
     ;; the index file need not all live under one directory together --
-    ;; typetopology-search-source-root and typetopology-search-file are
+    ;; typetopology-search-checkout-root and typetopology-search-file are
     ;; each independently configurable, precisely for that case. --no-html
     ;; skips building the browser page this same script also produces,
     ;; which needs concepts.tsv and agda-input-escapes.json to exist --
     ;; this file has no use for either, so there is no reason to require
     ;; them just to build Definitions.tsv.
     ;;
-    ;; expand-file-name here is not optional: call-process hands its
-    ;; argument strings to the subprocess exactly as given, with none of
-    ;; the "~" expansion Emacs's OWN file functions (file-directory-p
-    ;; above included) do quietly on your behalf -- a "~" that survives
-    ;; into this argv is just an ordinary character to Python, and
-    ;; `os.path.exists("~/...")' is false, not "your home directory".
+    ;; `typetopology-search--source-root' returning an already-expanded
+    ;; path is not optional here: call-process hands its argument strings
+    ;; to the subprocess exactly as given, with none of the "~" expansion
+    ;; Emacs's OWN file functions (file-directory-p above included) do
+    ;; quietly on your behalf -- a "~" that survives into this argv is
+    ;; just an ordinary character to Python, and `os.path.exists("~/...")'
+    ;; is false, not "your home directory".
     (let ((status (call-process (expand-file-name typetopology-search-generator)
                                 nil t nil
                                 "--emacs-index" "--no-html"
-                                "--source" (expand-file-name
-                                            typetopology-search-source-root)
+                                "--source" (typetopology-search--source-root)
                                 "--out" (expand-file-name
                                          (file-name-directory typetopology-search-file)))))
       (unless (zerop status)
@@ -713,10 +716,10 @@ menu's own prompt when it does run."
     (when (string-empty-p file)
       (user-error "No source file recorded for %s"
                   (typetopology-search-entry-name e)))
-    (let ((path (expand-file-name file typetopology-search-source-root)))
+    (let ((path (expand-file-name file (typetopology-search--source-root))))
       (unless (file-exists-p path)
-        (user-error "%s not found (typetopology-search-source-root is %s)"
-                    path typetopology-search-source-root))
+        (user-error "%s not found (typetopology-search-checkout-root is %s)"
+                    path typetopology-search-checkout-root))
       (find-file path)
       ;; `auto-mode-alist' normally puts a .lagda/.agda buffer straight into
       ;; agda2-mode already, via the boilerplate agda2-mode's own install

@@ -1,0 +1,5 @@
+#!/bin/sh
+# Byte-compile typetopology-search.el.
+set -e
+here=$(dirname "$0")
+exec emacs --batch -f batch-byte-compile "$here/typetopology-search.el"

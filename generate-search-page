@@ -1,5 +1,5 @@
 #!/bin/sh
-# Regenerate search.html (and its friends) from a TypeTopology checkout.
+# Regenerate search.html (and its friends) from a TypeTopology directory.
 # Usage: ./generate-search-page /path/to/TypeTopology
 set -e
 if [ -z "$1" ]; then

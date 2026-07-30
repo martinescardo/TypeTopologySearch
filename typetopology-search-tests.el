@@ -239,15 +239,15 @@ the very first time, when there is no index yet at all."
         (typetopology-search-file "/nonexistent-dir/Definitions.tsv"))
     (should-error (typetopology-search--regenerate) :type 'user-error)))
 
-(ert-deftest tt-search-regenerate-user-error-bad-source-root ()
+(ert-deftest tt-search-regenerate-user-error-bad-checkout-root ()
   "The generator is deployable separately from any particular
-TypeTopology checkout, so a source root that is not actually a
-directory (never set, or set wrong) is caught here with a clear
-message, rather than surfacing as a raw Python traceback from
+TypeTopology directory, so a checkout root whose source/ subdirectory
+does not actually exist (never set, or set wrong) is caught here with
+a clear message, rather than surfacing as a raw Python traceback from
 agda-index.py itself failing to find anything to render."
   (let* ((dir (make-temp-file "tt-search-gen" t))
          (typetopology-search-generator (expand-file-name "agda-index.py" dir))
-         (typetopology-search-source-root "/nonexistent-source-root"))
+         (typetopology-search-checkout-root "/nonexistent-checkout-root"))
     (unwind-protect
         (progn
           (tt-search--write-fake-generator typetopology-search-generator)
@@ -258,15 +258,16 @@ agda-index.py itself failing to find anything to render."
   "Confirms the actual arguments passed to the generator, not just that
 SOME invocation succeeds -- this is what makes deploying
 typetopology-search.el and agda-index.py somewhere other than inside
-the TypeTopology checkout itself work at all, rather than silently
+the TypeTopology directory itself work at all, rather than silently
 falling back to agda-index.py's own directory-relative defaults."
   (let* ((dir (make-temp-file "tt-search-gen" t))
          (typetopology-search-generator (expand-file-name "agda-index.py" dir))
-         (typetopology-search-source-root dir)
+         (typetopology-search-checkout-root dir)
          (typetopology-search-file (expand-file-name "out/Definitions.tsv" dir))
          (seen-args nil))
     (unwind-protect
         (progn
+          (make-directory (expand-file-name "source" dir))
           (tt-search--write-fake-generator typetopology-search-generator)
           (cl-letf (((symbol-function 'call-process)
                      (lambda (_prog _infile _dest _display &rest args)
@@ -274,16 +275,16 @@ falling back to agda-index.py's own directory-relative defaults."
             (typetopology-search--regenerate))
           (should (equal seen-args
                         (list "--emacs-index" "--no-html"
-                              "--source" dir
+                              "--source" (expand-file-name "source" dir)
                               "--out" (file-name-directory typetopology-search-file)))))
       (delete-directory dir t))))
 
-(ert-deftest tt-search-regenerate-expands-tilde-in-source-root ()
+(ert-deftest tt-search-regenerate-expands-tilde-in-checkout-root ()
   "The actual bug hit in real use: call-process hands its argument
 strings to the subprocess exactly as given, with none of the \"~\"
 expansion Emacs's own file functions (file-directory-p, used in the
-precondition check just before this) do transparently -- a source root
-of \"~/TypeTopology/source/\" reached Python as that literal string,
+precondition check just before this) do transparently -- a checkout
+root of \"~/TypeTopology\" reached Python as that literal string,
 where `os.path.exists' on a leading \"~\" is simply false. Uses a real
 directory under the real $HOME, not a fixture elsewhere, since the bug
 was specifically about \"~\" -- a fixture path without one would not
@@ -294,11 +295,12 @@ have caught it."
                                    (directory-file-name real-home-dir))))
          (dir (make-temp-file "tt-search-gen" t))
          (typetopology-search-generator (expand-file-name "agda-index.py" dir))
-         (typetopology-search-source-root tilde-path)
+         (typetopology-search-checkout-root tilde-path)
          (typetopology-search-file (expand-file-name "Definitions.tsv" dir))
          (seen-args nil))
     (unwind-protect
         (progn
+          (make-directory (expand-file-name "source" real-home-dir))
           (tt-search--write-fake-generator typetopology-search-generator)
           (cl-letf (((symbol-function 'call-process)
                      (lambda (_prog _infile _dest _display &rest args)
@@ -308,7 +310,8 @@ have caught it."
                                                   :test #'equal))
                                  seen-args)))
             (should-not (string-prefix-p "~" source-arg))
-            (should (equal source-arg (expand-file-name tilde-path)))))
+            (should (equal source-arg (expand-file-name "source"
+                                                         (expand-file-name tilde-path))))))
       (delete-directory dir t)
       (delete-directory real-home-dir t))))
 
@@ -502,10 +505,11 @@ being dropped into the middle of an existing line."
 
 (ert-deftest tt-search-jump-to-source ()
   (let* ((dir (make-temp-file "tt-search-src" t))
-         (typetopology-search-source-root dir))
+         (typetopology-search-checkout-root dir))
     (unwind-protect
         (progn
-          (with-temp-file (expand-file-name "M.lagda" dir)
+          (make-directory (expand-file-name "source" dir))
+          (with-temp-file (expand-file-name "source/M.lagda" dir)
             (dotimes (i 5) (insert (format "line %d\n" (1+ i)))))
           (typetopology-search--jump-to-source
            (typetopology-search-entry-create
@@ -527,11 +531,12 @@ checks is a real robustness improvement regardless -- if agda2-mode IS
 loaded (`fboundp') and the buffer did not already land in it via
 auto-mode-alist, switch to it explicitly."
   (let* ((dir (make-temp-file "tt-search-src" t))
-         (typetopology-search-source-root dir)
+         (typetopology-search-checkout-root dir)
          (called nil))
     (unwind-protect
         (progn
-          (with-temp-file (expand-file-name "M.lagda" dir) (insert "x\n"))
+          (make-directory (expand-file-name "source" dir))
+          (with-temp-file (expand-file-name "source/M.lagda" dir) (insert "x\n"))
           ;; agda2-mode is not normally bound in this test environment, so
           ;; `fset' rather than `cl-letf' -- the latter needs a function to
           ;; already be bound in order to save and later restore it.
@@ -550,11 +555,12 @@ auto-mode-alist, switch to it explicitly."
 agda2-mode is not loaded at all (not `fboundp'), jumping to source
 still works, with no error and no attempt to call it."
   (let* ((dir (make-temp-file "tt-search-src" t))
-         (typetopology-search-source-root dir))
+         (typetopology-search-checkout-root dir))
     (unwind-protect
         (progn
           (should-not (fboundp 'agda2-mode))
-          (with-temp-file (expand-file-name "M.lagda" dir) (insert "x\n"))
+          (make-directory (expand-file-name "source" dir))
+          (with-temp-file (expand-file-name "source/M.lagda" dir) (insert "x\n"))
           (typetopology-search--jump-to-source
            (typetopology-search-entry-create
             :name "x" :dispmod "M" :importmod "M" :file "M.lagda"
@@ -564,7 +570,7 @@ still works, with no error and no attempt to call it."
       (delete-directory dir t))))
 
 (ert-deftest tt-search-jump-to-source-missing-file-errors-cleanly ()
-  (let ((typetopology-search-source-root (make-temp-file "tt-search-empty" t)))
+  (let ((typetopology-search-checkout-root (make-temp-file "tt-search-empty" t)))
     (unwind-protect
         (should-error
          (typetopology-search--jump-to-source
@@ -572,7 +578,7 @@ still works, with no error and no attempt to call it."
            :name "x" :dispmod "M" :importmod "M" :file "NoSuchFile.lagda"
            :line 1 :uses 0 :sig "" :assumes ""))
          :type 'user-error)
-      (delete-directory typetopology-search-source-root t))))
+      (delete-directory typetopology-search-checkout-root t))))
 
 (ert-deftest tt-search-jump-to-source-empty-file-field-errors-cleanly ()
   (should-error
