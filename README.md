@@ -12,7 +12,7 @@ page](https://martinescardo.github.io/TypeTopologySearch.html) and an
     1. [Manually](#manually)
     1. [Compiling it](#compiling-it)
  1. [Using the Emacs command](#using-the-emacs-command)
-    1. [Basics](#basics)
+    1. [Overview](#basics)
     1. [Acting on a result](#acting-on-a-result)
     1. [What you can search for in Emacs](#what-you-can-search-for-in-emacs)
     1. [In detail](#in-detail)
@@ -88,7 +88,7 @@ significantly faster.
 
 ## Using the Emacs command
 
-### Basics
+### Overview
 
 `M-x typetopology-search`, or its shorthand `M-x ttsearch`, bound to
 `C-c C-g` in Agda buffers, looks a name or a piece of a type signature up
