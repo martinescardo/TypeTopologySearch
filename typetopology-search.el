@@ -479,7 +479,7 @@ anywhere else, or nil when TERM does not match TEXT at all."
     (if rx
         (when (string-match rx text)
           (setq i (match-beginning 0) len (- (match-end 0) (match-beginning 0))))
-      (let ((p (string-search word text)))
+      (let ((p (string-match-p (regexp-quote word) text)))
         (when p (setq i p len (length word)))))
     (when i
       (cond
@@ -525,7 +525,8 @@ alone."
   "Whether TERM (a (WORD . REGEXP) pair from
 `typetopology-search--terms') matches somewhere in TEXT (already
 lower-case)."
-  (if (cdr term) (string-match-p (cdr term) text) (string-search (car term) text)))
+  (if (cdr term) (string-match-p (cdr term) text)
+    (string-match-p (regexp-quote (car term)) text)))
 
 (defun typetopology-search--filter (query)
   "Every entry whose display text matches each whitespace-separated term
