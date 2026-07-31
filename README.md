@@ -12,12 +12,12 @@ page](https://martinescardo.github.io/TypeTopologySearch.html) and an
     1. [Manually](#manually)
     1. [Compiling it](#compiling-it)
  1. [Using the Emacs command](#using-the-emacs-command)
-    1. [Overview](#basics)
+    1. [Overview](#overview)
     1. [Acting on a result](#acting-on-a-result)
     1. [What you can search for in Emacs](#what-you-can-search-for-in-emacs)
     1. [In detail](#in-detail)
  1. [Using the search page](#using-the-search-page)
-    1. [Overview](#overview)
+    1. [Overview](#overview-1)
     1. [What you can search for in the search page](#what-you-can-search-for-in-the-search-page)
     1. [Buttons on each result](#buttons-on-each-result)
     1. [Typing Unicode](#typing-unicode)
@@ -349,13 +349,13 @@ both work.
 
 ### Regenerating the index
 
-`typetopology-search-prompt-to-regenerate`, on by default, notices
-whenever the source has a definition newer than the index and asks,
-once, whether to rebuild before searching -- search still works either
-way, just less accurately if declined, and declining is not asked
-again for the rest of the Emacs session, since edits are constant
-while writing Agda. Set it to nil to turn this off and only ever
-regenerate by hand, with `M-x typetopology-search-regenerate-index`.
+`typetopology-search-warn-when-stale`, on by default, notices whenever
+the source has a definition newer than the index and shows a dimmed
+reminder in the results window -- search still works regardless, just
+possibly missing recent definitions. Press `C-c C-r` during the search
+to rebuild it right there, or run `M-x
+typetopology-search-regenerate-index` at any other time. Set the
+variable to nil to turn off the check and the reminder.
 
 <sub>[Table of contents](#table-of-contents)</sub>
 
