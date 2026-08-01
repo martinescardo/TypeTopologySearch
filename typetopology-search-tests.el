@@ -227,6 +227,30 @@ wording for the two different lists."
                          '("foo" "bar"))))
       (delete-file file))))
 
+(ert-deftest tt-search-load-keeps-a-name-starting-with-hash ()
+  "Real bug, found by counting entries precisely rather than trusting
+the summary print: `#-' (PathSequences.Split.lagda:173, a genuine
+TypeTopology identifier) was silently dropped, because a data line
+starting with \"#\" looked exactly like one of this file's own header
+comments to the old leading-\"#\" check. A data line always has a TAB
+in it (`typetopology-search--parse-line' requires >= 8 fields) and a
+header comment never does, which is what `typetopology-search--load'
+now checks instead."
+  (let ((file (make-temp-file "tt-search-test" nil ".tsv")))
+    (unwind-protect
+        (progn
+          (with-temp-file file
+            (insert "# a comment line, skipped\n")
+            (insert (string-join '("#-" "PathSequences.Split" "PathSequences.Split"
+                                   "PathSequences/Split.lagda" "173" "6" "" "")
+                                 "\t"))
+            (insert "\n"))
+          (typetopology-search--load file)
+          (should (equal (mapcar #'typetopology-search-entry-name
+                                 typetopology-search--entries)
+                         '("#-"))))
+      (delete-file file))))
+
 (ert-deftest tt-search-ensure-loaded-picks-up-update ()
   "Editing the file (a later mtime) is picked up on the next call, with no
 separate reload step -- this is what makes \"just re-run agda-index.py\"

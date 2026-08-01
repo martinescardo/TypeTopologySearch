@@ -265,7 +265,15 @@ contributors or concepts were added still parses exactly as before."
             e))))))
 
 (defun typetopology-search--load (file)
-  "Parse FILE into `typetopology-search--entries'."
+  "Parse FILE into `typetopology-search--entries'. A line is data if
+it contains a TAB, and skipped (a blank line, or one of the header
+comments agda-index.py writes) otherwise -- NOT decided by whether the
+line starts with \"#\", which a real data line can too: `#-' is a
+genuine TypeTopology identifier (`PathSequences.Split.lagda', line
+173), and a leading-\"#\" check alone silently dropped it, along with
+any other identifier that might ever start the same way. The header
+comments this file's own agda-index.py writes are always plain prose,
+with no TAB in them, so this still tells the two apart correctly."
   (let ((entries nil))
     (with-temp-buffer
       (insert-file-contents file)
@@ -273,7 +281,7 @@ contributors or concepts were added still parses exactly as before."
       (while (not (eobp))
         (let ((line (buffer-substring-no-properties
                      (line-beginning-position) (line-end-position))))
-          (unless (or (string-empty-p line) (string-prefix-p "#" line))
+          (when (string-match-p "\t" line)
             (let ((e (typetopology-search--parse-line line)))
               (when e (push e entries)))))
         (forward-line 1)))
