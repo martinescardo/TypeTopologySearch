@@ -633,18 +633,21 @@ against the fresh entries -- all without leaving the search."
                   (tt-search--sample-entry) nil)
                  'jump-to-source)))))
 
-(ert-deftest tt-search-decide-action-menus-when-sticky-action-does-not-apply ()
-  "The sticky default from a definition (jump to source) does not apply
-to a contributor picked right afterward -- the menu must fire instead
-of silently repeating an action the new entry cannot perform."
+(ert-deftest tt-search-decide-action-skips-menu-for-single-action-entry ()
+  "A contributor or concept offers exactly one action (see
+`typetopology-search--contributor-actions') -- there is nothing to
+choose between, so RET (and TAB) go straight to it, with no menu ever,
+regardless of via-tab or what the sticky default from some earlier,
+differently-kinded entry happened to be."
   (let ((typetopology-search--last-action 'jump-to-source))
     (cl-letf (((symbol-function 'typetopology-search--choose-action)
-               (lambda (_entry &optional first-time)
-                 (should (eq first-time nil))
-                 'insert-name)))
+               (lambda (&rest _) (error "menu should not be shown"))))
       (should (eq (typetopology-search--decide-action
                   (tt-search--sample-person-entry) nil)
-                 'insert-name)))))
+                 'jump-to-mention))
+      (should (eq (typetopology-search--decide-action
+                  (tt-search--sample-concept-entry) t)
+                 'jump-to-mention)))))
 
 (ert-deftest tt-search-decide-action-tab-always-menus ()
   (let ((typetopology-search--last-action 'insert-name)
@@ -698,13 +701,14 @@ contributor offers."
   (should (equal (mapcar #'cdr (typetopology-search--actions-for (tt-search--sample-entry)))
                 '(jump-to-source insert-name insert-import update-index))))
 
-(ert-deftest tt-search-actions-for-contributor-offers-only-jump-and-update ()
+(ert-deftest tt-search-actions-for-contributor-offers-only-jump-to-mention ()
   "A contributor has no source file or module of its own to jump to
 directly or open an import for -- only a module that mentions them,
-via \"jump to a module mentioning them\", plus updating the index."
+via \"jump to a module mentioning them\", and nothing else: not even
+updating the index, which a definition's own menu does offer."
   (should (equal (mapcar #'cdr (typetopology-search--actions-for
                                 (tt-search--sample-person-entry)))
-                '(jump-to-mention update-index))))
+                '(jump-to-mention))))
 
 (ert-deftest tt-search-actions-for-concept-same-as-contributor ()
   (should (equal (typetopology-search--actions-for (tt-search--sample-concept-entry))
@@ -1150,6 +1154,35 @@ by hand against the raw HTML earlier in this project (cale-lo-lemma's
                  (lambda (&rest _) (error "menu should not be shown"))))
         (typetopology-search)
         (should (equal (buffer-string) "open import InjectiveTypes.Blackboard"))))))
+
+(ert-deftest tt-search-end-to-end-contributor-skips-menu-and-jumps ()
+  "Picking a contributor (or concept) result goes straight to
+jump-to-mention -- no action menu at all, since there is only one
+thing to do with one. `read-from-minibuffer' is stubbed to error,
+so an unwanted menu read would fail this test rather than silently
+pass; `typetopology-search--pick-from-list' is stubbed separately, for
+the one, expected minibuffer-shaped interaction this action itself
+needs (choosing which mentioning module to jump to)."
+  (let* ((dir (make-temp-file "tt-search-src" t))
+         (typetopology-search-checkout-root dir)
+         (entry (typetopology-search-entry-create
+                :name "Escardo" :dispmod "" :importmod "" :file "" :line 0
+                :uses 1 :sig "" :assumes "M.A" :kind 'person)))
+    (unwind-protect
+        (progn
+          (make-directory (expand-file-name "source/M" dir) t)
+          (with-temp-file (expand-file-name "source/M/A.lagda" dir) (insert "x\n"))
+          (cl-letf (((symbol-function 'typetopology-search--ensure-loaded) #'ignore)
+                    ((symbol-function 'typetopology-search--read-candidate)
+                     (lambda () (cons entry nil)))
+                    ((symbol-function 'typetopology-search--pick-from-list)
+                     (lambda (_prompt items) (car items)))
+                    ((symbol-function 'read-from-minibuffer)
+                     (lambda (&rest _) (error "no menu should be shown"))))
+            (typetopology-search)
+            (should (equal (buffer-name) "A.lagda"))))
+      (ignore-errors (kill-buffer "A.lagda"))
+      (delete-directory dir t))))
 
 ;; ----------------------------------------------- filtering candidates
 

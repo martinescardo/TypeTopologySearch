@@ -95,7 +95,7 @@ monad	monad	[Mm]onad	Monad, Kleisli-extension
 game	\bgame\b|game tree	[Gg]ame	GameJ, Game, game-tree
 alpha-beta pruning	alpha.beta|α.β		
 Lawvere fixed point theorem	lawvere|fixed point theorem	LFPT|[Ll]awvere|fixed-point	LFPT, lfix-is-fixed-point, LFPT-＝
-Higgs involution theorem	higgs|involution	[Ii]nvolution|Higgs	𝟏-involution, involution-swap, involutions-are-equivs
+Higgs involution theorem	higgs	[Hh]iggs	higgs-involution-theorem
 apartness	apartness	apart	is-apartness, is-strong-apartness, ♯-is-apartness
 tight apartness	tight apartness	tight	is-tight, tight, ♯-is-tight
 metric space	metric space	[Mm]etric	metric-space, is-symmetric, symmetric

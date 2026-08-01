@@ -448,13 +448,16 @@ default plain RET repeats, unlike the others.")
 `typetopology-search--actions-for'.")
 
 (defconst typetopology-search--contributor-actions
-  '(jump-to-mention update-index)
+  '(jump-to-mention)
   "Which of `typetopology-search--actions' a contributor or a concept
 offers -- see `typetopology-search--actions-for'. Inserting their name
 at point, this file's very first idea for a contributor result, does
 not belong here: nobody wants that: what a contributor or concept
 result is actually for is finding one of the modules that mentions it
-and jumping there.")
+and jumping there -- the ONLY thing, deliberately not also offering
+\"update the index\" here the way a definition's own menu does, since
+`typetopology-search--decide-action' skips the menu entirely (RET goes
+straight to the one action) whenever there is only one to choose from.")
 
 (defun typetopology-search--actions-for (entry)
   "The subset of `typetopology-search--actions', in order, that ENTRY
@@ -1124,18 +1127,23 @@ updating the index): ")))
 
 (defun typetopology-search--decide-action (entry via-tab)
   "Which action to perform, given whether TAB (rather than RET) ended the
-read: the menu wins if TAB asked for it explicitly, if none has ever
-been chosen yet this session, or if the sticky default from a previous,
-differently-kinded entry does not even apply to ENTRY (a contributor
-picked right after \"jump to source\" was last chosen for a definition,
-say) -- otherwise the last one sticks. ENTRY is passed through to
-`typetopology-search--choose-action', to show in the menu's own prompt
-when it does run."
-  (if (or via-tab (null typetopology-search--last-action)
-         (not (memq typetopology-search--last-action
-                    (mapcar #'cdr (typetopology-search--actions-for entry)))))
-      (typetopology-search--choose-action entry (null typetopology-search--last-action))
-    typetopology-search--last-action))
+read. No menu, ever, when ENTRY offers only one action at all (a
+contributor or a concept, see `typetopology-search--contributor-actions')
+-- there is nothing to choose between, so RET and TAB alike go straight
+to it. Otherwise the menu wins if TAB asked for it explicitly, if none
+has ever been chosen yet this session, or if the sticky default from a
+previous, differently-kinded entry does not even apply to ENTRY (a
+one-action contributor picked right after \"jump to source\" was last
+chosen for a definition, say) -- otherwise the last one sticks. ENTRY
+is passed through to `typetopology-search--choose-action', to show in
+the menu's own prompt when it does run."
+  (let ((available (mapcar #'cdr (typetopology-search--actions-for entry))))
+    (if (= (length available) 1)
+        (car available)
+      (if (or via-tab (null typetopology-search--last-action)
+             (not (memq typetopology-search--last-action available)))
+          (typetopology-search--choose-action entry (null typetopology-search--last-action))
+        typetopology-search--last-action))))
 
 ;; ------------------------------------------------------------ actions
 
@@ -1248,10 +1256,10 @@ it; or update the index (see `typetopology-search-update-index') --
 the odd one out, since it does not act on the entry the menu was
 opened for at all, and so never becomes what RET repeats afterward. A
 contributor or a concept, matched by name/label alone, has no source
-file or module of their own to jump to or open an import for directly
--- instead, jump to one of the modules that mentions them, picked from
-a second list, or update the index (see
-`typetopology-search--actions-for').
+file or module of their own to jump to or open an import for directly,
+and no menu either: the only thing to do with one is jump to one of the
+modules that mentions it, picked from a second list, so RET and TAB
+alike go straight there (see `typetopology-search--decide-action').
 
 This searches the whole library regardless of what the current buffer
 has imported -- for a live, exactly-normalised type of something
