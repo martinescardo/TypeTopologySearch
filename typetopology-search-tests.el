@@ -35,7 +35,7 @@ oddly."
 (defun tt-search--sample-person-entry ()
   (tt-search--make-entry
    :name "Escardo" :dispmod "" :importmod "" :file "" :line 0 :uses 507
-   :sig "" :assumes "" :kind 'person))
+   :sig "" :assumes "M.A;M.B" :kind 'person))
 
 ;; ------------------------------------------------------------- parsing
 
@@ -615,15 +615,18 @@ pre-selected) choice on the menu."
                 'update-index)))
 
 (ert-deftest tt-search-actions-for-definition-offers-all-four ()
-  (should (equal (typetopology-search--actions-for (tt-search--sample-entry))
-                typetopology-search--actions)))
+  "Everything but \"jump to a module mentioning them\", which only a
+contributor offers."
+  (should (equal (mapcar #'cdr (typetopology-search--actions-for (tt-search--sample-entry)))
+                '(jump-to-source insert-name insert-import update-index))))
 
-(ert-deftest tt-search-actions-for-contributor-offers-only-insert-and-update ()
-  "A contributor has no source file or module of its own, so \"jump to
-source\" and \"insert open import\" are left off its own menu."
+(ert-deftest tt-search-actions-for-contributor-offers-only-jump-and-update ()
+  "A contributor has no source file or module of its own to jump to
+directly or open an import for -- only a module that mentions them,
+via \"jump to a module mentioning them\", plus updating the index."
   (should (equal (mapcar #'cdr (typetopology-search--actions-for
                                 (tt-search--sample-person-entry)))
-                '(insert-name update-index))))
+                '(jump-to-mention update-index))))
 
 (ert-deftest tt-search-read-candidate-uses-dedicated-history ()
   "Regression test for a real bug hit in use: without an explicit HIST
@@ -893,6 +896,75 @@ still works, with no error and no attempt to call it."
      :name "x" :dispmod "M" :importmod "M" :file ""
      :line 1 :uses 0 :sig "" :assumes ""))
    :type 'user-error))
+
+(ert-deftest tt-search-module-path-prefers-lagda-then-agda ()
+  (let* ((dir (make-temp-file "tt-search-src" t))
+         (typetopology-search-checkout-root dir))
+    (unwind-protect
+        (progn
+          (make-directory (expand-file-name "source/M" dir) t)
+          (with-temp-file (expand-file-name "source/M/A.lagda" dir) (insert "x\n"))
+          (with-temp-file (expand-file-name "source/M/B.agda" dir) (insert "x\n"))
+          (should (equal (typetopology-search--module-path "M.A")
+                        (expand-file-name "source/M/A.lagda" dir)))
+          (should (equal (typetopology-search--module-path "M.B")
+                        (expand-file-name "source/M/B.agda" dir)))
+          (should (null (typetopology-search--module-path "M.NoSuchModule"))))
+      (delete-directory dir t))))
+
+(ert-deftest tt-search-jump-to-mention-picks-and-visits-a-module ()
+  (let* ((dir (make-temp-file "tt-search-src" t))
+         (typetopology-search-checkout-root dir))
+    (unwind-protect
+        (progn
+          (make-directory (expand-file-name "source/M" dir) t)
+          (with-temp-file (expand-file-name "source/M/A.lagda" dir) (insert "x\n"))
+          (with-temp-file (expand-file-name "source/M/B.lagda" dir) (insert "x\n"))
+          (cl-letf (((symbol-function 'typetopology-search--pick-from-list)
+                     (lambda (_prompt items)
+                       (should (equal items '("M.A" "M.B")))
+                       "M.B")))
+            (typetopology-search--jump-to-mention
+             (typetopology-search-entry-create
+              :name "Escardo" :dispmod "" :importmod "" :file "" :line 0
+              :uses 2 :sig "" :assumes "M.A;M.B" :kind 'person)))
+          (should (equal (buffer-name) "B.lagda")))
+      (ignore-errors (kill-buffer "B.lagda"))
+      (delete-directory dir t))))
+
+(ert-deftest tt-search-jump-to-mention-no-modules-errors-cleanly ()
+  (should-error
+   (typetopology-search--jump-to-mention
+    (typetopology-search-entry-create
+     :name "Nobody" :dispmod "" :importmod "" :file "" :line 0 :uses 0
+     :sig "" :assumes "" :kind 'person))
+   :type 'user-error))
+
+(ert-deftest tt-search-jump-to-mention-missing-source-errors-cleanly ()
+  (let ((typetopology-search-checkout-root (make-temp-file "tt-search-empty" t)))
+    (unwind-protect
+        (cl-letf (((symbol-function 'typetopology-search--pick-from-list)
+                   (lambda (_prompt _items) "NoSuchModule")))
+          (should-error
+           (typetopology-search--jump-to-mention
+            (typetopology-search-entry-create
+             :name "Escardo" :dispmod "" :importmod "" :file "" :line 0
+             :uses 1 :sig "" :assumes "NoSuchModule" :kind 'person))
+           :type 'user-error))
+      (delete-directory typetopology-search-checkout-root t))))
+
+(ert-deftest tt-search-pick-from-list-nil-for-empty-items ()
+  "No minibuffer read at all for an empty list -- nothing to pick."
+  (cl-letf (((symbol-function 'read-from-minibuffer)
+             (lambda (&rest _) (error "should not be called"))))
+    (should (null (typetopology-search--pick-from-list "prompt: " nil)))))
+
+(ert-deftest tt-search-perform-jump-to-mention-dispatches ()
+  (let ((called-with nil))
+    (cl-letf (((symbol-function 'typetopology-search--jump-to-mention)
+               (lambda (e) (setq called-with e))))
+      (typetopology-search--perform 'jump-to-mention (tt-search--sample-person-entry))
+      (should (equal (typetopology-search-entry-name called-with) "Escardo")))))
 
 ;; --------------------------------------------------- against the real file
 

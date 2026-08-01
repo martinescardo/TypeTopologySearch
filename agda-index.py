@@ -630,8 +630,10 @@ def write_emacs_index(rows, out, sourcedir, people):
     # shows) are rows here too, told apart by the trailing "kind" column
     # ("def" or "person") -- a person has no module, file, line or
     # signature of their own, so those columns are simply empty; the use
-    # count column is repurposed to hold how many modules name them,
-    # since neither row kind needs both meanings at once.
+    # count column is repurposed to hold how many modules name them, and
+    # the assumes column to hold which ones, semicolon-separated (a
+    # module's dotted name never contains one), since neither row kind
+    # needs both meanings of either column at once.
     src_of = {}
     def source_file(mod):
         if mod not in src_of:
@@ -651,7 +653,7 @@ def write_emacs_index(rows, out, sourcedir, people):
             field(r.get("sig") or ""), field(r.get("scope_text") or ""), "def"]))
     for name, mods in people:
         entries.append((name, [name, "", "", "", "0", str(len(mods)),
-                                "", "", "person"]))
+                                "", ";".join(mods), "person"]))
     entries.sort(key=lambda e: sortkey(e[0]))
     lines = ["\t".join(fields) for _, fields in entries]
     header = ["# TypeTopology definitions and contributors index for "
@@ -660,9 +662,10 @@ def write_emacs_index(rows, out, sourcedir, people):
               "wants), source file relative to the source directory,",
               "# source line, use count (a contributor's: how many "
               "modules name them), signature where known, any hypothesis",
-              "# taken by an enclosing module, and kind (\"def\" or "
-              "\"person\" -- a person has no module, file, line or "
-              "signature).",
+              "# taken by an enclosing module (a contributor's: which "
+              "modules name them, semicolon-separated instead), and kind",
+              "# (\"def\" or \"person\" -- a person has no module, file, "
+              "line or signature).",
               "# Every line below is data, none of them this header -- a "
               "reader just drops lines starting with \"#\"",
               f"# and splits the rest on tabs. {len(rows)} definitions, "

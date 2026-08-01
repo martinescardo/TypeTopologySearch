@@ -116,9 +116,10 @@ explicit `typetopology-search-update-index' or `C-c C-u'."
                (:constructor typetopology-search-entry-create))
   "One row of Definitions.tsv -- either a definition (KIND `def', the
 default) or a contributor (KIND `person'), told apart by Definitions.tsv's
-own trailing column. A person entry has no DISPMOD, IMPORTMOD, FILE,
-SIG, or ASSUMES of its own -- all \"\" -- and USES holds how many
-modules name them, not a use count."
+own trailing column. A person entry has no DISPMOD, IMPORTMOD, FILE, or
+SIG of their own -- all \"\" -- USES holds how many modules name them,
+not a use count, and ASSUMES holds which ones, semicolon-separated,
+instead of an enclosing-module hypothesis."
   name        ; bare identifier, or a contributor's name
   dispmod     ; module, with any inner submodule, for display
   importmod   ; module alone, what `open import' wants
@@ -126,7 +127,8 @@ modules name them, not a use count."
   line        ; source line, 1-indexed
   uses        ; use count, an integer -- or, for a person, module count
   sig         ; signature, or ""
-  assumes     ; enclosing-module hypotheses, or ""
+  assumes     ; enclosing-module hypotheses, or "" -- or, for a person,
+              ; the modules naming them, semicolon-separated
   (kind 'def) ; `def' or `person' -- defaults to `def' so code and tests
               ; built before this distinction existed still work unchanged
   dtext)      ; lower-cased display text, cached -- see `typetopology-search--dtext'
@@ -379,6 +381,7 @@ agda-index.py --emacs-index, or set typetopology-search-file"
   '(("Jump to its definition in the source file"      . jump-to-source)
     ("Insert the name at point"                      . insert-name)
     ("Insert \"open import Module\" for its module"   . insert-import)
+    ("Jump to a module mentioning them"               . jump-to-mention)
     ("Update the index"                              . update-index))
   "Every action this file knows, and the label used for each -- the
 canonical name/label mapping `typetopology-search--action-label' and
@@ -391,16 +394,32 @@ on the entry the menu was opened for at all, and -- see
 `typetopology-search--choose-action' -- never becomes the sticky
 default plain RET repeats, unlike the others.")
 
+(defconst typetopology-search--definition-actions
+  '(jump-to-source insert-name insert-import update-index)
+  "Which of `typetopology-search--actions' a definition offers -- see
+`typetopology-search--actions-for'.")
+
+(defconst typetopology-search--contributor-actions
+  '(jump-to-mention update-index)
+  "Which of `typetopology-search--actions' a contributor offers -- see
+`typetopology-search--actions-for'. Inserting their name at point,
+this file's very first idea for a contributor result, does not belong
+here: nobody wants that: what a contributor result is actually for is
+finding one of the modules that names them and jumping there.")
+
 (defun typetopology-search--actions-for (entry)
   "The subset of `typetopology-search--actions', in order, that ENTRY
-actually offers on the menu. A definition offers all four. A
-contributor (see `typetopology-search-entry-kind') has no source file
-and no module of its own to open an import for, so only \"insert the
-name\" and \"update the index\" apply."
-  (if (eq (typetopology-search-entry-kind entry) 'person)
-      (list (assoc "Insert the name at point" typetopology-search--actions)
-            (assoc "Update the index" typetopology-search--actions))
-    typetopology-search--actions))
+actually offers on the menu -- `typetopology-search--definition-actions'
+for a definition, `typetopology-search--contributor-actions' for a
+contributor (see `typetopology-search-entry-kind'): a contributor has
+no source file or module of their own to jump to directly or open an
+import for, only modules that mention them, reached instead via
+`jump-to-mention' (see `typetopology-search--jump-to-mention')."
+  (let ((wanted (if (eq (typetopology-search-entry-kind entry) 'person)
+                    typetopology-search--contributor-actions
+                  typetopology-search--definition-actions)))
+    (cl-remove-if-not (lambda (a) (memq (cdr a) wanted))
+                      typetopology-search--actions)))
 
 (defvar typetopology-search--last-action nil
   "The action last chosen from the menu, this Emacs session -- nil means
@@ -943,26 +962,54 @@ case to handle."
 its `typetopology-search--select-next'/`--select-prev') minus TAB,
 which has no separate meaning here.")
 
+(defun typetopology-search--pick-from-list (prompt items)
+  "Read one of ITEMS (plain strings) with PROMPT, via the same
+fixed-list arrow-key picker the action menu uses --
+`typetopology-search--choose-action' and
+`typetopology-search--jump-to-mention' (a contributor's own list of
+mentioning modules) share this one implementation rather than each
+keeping its own copy of the minibuffer/transient-map/cleanup dance.
+Returns the chosen item, or nil if ITEMS is empty."
+  (when items
+    (let (exit-transient-map)
+      (setq typetopology-search--action-result nil)
+      (unwind-protect
+          (minibuffer-with-setup-hook
+              (lambda ()
+                (setq exit-transient-map
+                      (set-transient-map typetopology-search--action-minibuffer-map
+                                         (lambda () t)))
+                (typetopology-search--no-default-completions)
+                (setq typetopology-search--matches items
+                      typetopology-search--selected 0
+                      typetopology-search--display-fn #'identity
+                      typetopology-search--query-active nil)
+                (typetopology-search--show-results)
+                (typetopology-search--render nil items 0 #'identity))
+            (read-from-minibuffer prompt nil nil nil
+                                  'typetopology-search--action-history))
+        (when exit-transient-map (funcall exit-transient-map))
+        (typetopology-search--cleanup-results))
+      typetopology-search--action-result)))
+
 (defun typetopology-search--choose-action (entry &optional first-time)
-  "Prompt for one of `typetopology-search--actions' and remember it as
-the new default -- the \"sticky\" half of RET repeating the last choice
--- unless it is `update-index', which never becomes a default: it
-does not act on ENTRY at all, so there is nothing sensible for a later
-RET on some unrelated result to \"repeat\".
+  "Prompt for one of `typetopology-search--actions-for' ENTRY and
+remember it as the new default -- the \"sticky\" half of RET repeating
+the last choice -- unless it is `update-index', which never becomes a
+default: it does not act on ENTRY at all, so there is nothing sensible
+for a later RET on some unrelated result to \"repeat\".
 ENTRY, the result just picked, is shown first, so the prompt asking
 what to do with it is never divorced from what \"it\" actually is.
 FIRST-TIME says whether this is the very first pick this session, purely
 to word the rest of the prompt accordingly.
 
-Uses the same own arrow-key selection UI as the main search
-(`typetopology-search--read-candidate'), not `completing-read' -- for
-the identical reason: with `completing-read', arrow keys depend on
-whatever completion setup, if any, happens to be configured, which is
-exactly what broke here too (\"same problem we had in the search
-box\", his own words) before this fix, by the same underlying cause.
-Installed via `set-transient-map', not `use-local-map', for the same
-reason `typetopology-search--read-candidate' now does -- see its own
-docstring."
+Uses `typetopology-search--pick-from-list', the same own arrow-key
+selection UI as the main search (`typetopology-search--read-candidate'),
+not `completing-read' -- for the identical reason: with
+`completing-read', arrow keys depend on whatever completion setup, if
+any, happens to be configured, which is exactly what broke here too
+(\"same problem we had in the search box\", his own words) before this
+fix, by the same underlying cause."
   (let* ((prompt (concat (typetopology-search--display entry) "\n"
                          (if first-time
                              "First pick -- choose what happens (becomes your \
@@ -971,30 +1018,11 @@ menu later): "
                            "Choose an action (becomes the new default, except \
 updating the index): ")))
          (labels (mapcar #'car (typetopology-search--actions-for entry)))
-         exit-transient-map)
-    (setq typetopology-search--action-result nil)
-    (unwind-protect
-        (minibuffer-with-setup-hook
-            (lambda ()
-              (setq exit-transient-map
-                    (set-transient-map typetopology-search--action-minibuffer-map
-                                       (lambda () t)))
-              (typetopology-search--no-default-completions)
-              (setq typetopology-search--matches labels
-                    typetopology-search--selected 0
-                    typetopology-search--display-fn #'identity
-                    typetopology-search--query-active nil)
-              (typetopology-search--show-results)
-              (typetopology-search--render nil labels 0 #'identity))
-          (read-from-minibuffer prompt nil nil nil
-                                'typetopology-search--action-history))
-      (when exit-transient-map (funcall exit-transient-map))
-      (typetopology-search--cleanup-results))
-    (let ((action (cdr (assoc typetopology-search--action-result
-                              typetopology-search--actions))))
-      (unless (eq action 'update-index)
-        (setq typetopology-search--last-action action))
-      action)))
+         (chosen (typetopology-search--pick-from-list prompt labels))
+         (action (cdr (assoc chosen typetopology-search--actions))))
+    (unless (eq action 'update-index)
+      (setq typetopology-search--last-action action))
+    action))
 
 (defun typetopology-search--decide-action (entry via-tab)
   "Which action to perform, given whether TAB (rather than RET) ended the
@@ -1013,6 +1041,21 @@ when it does run."
 
 ;; ------------------------------------------------------------ actions
 
+(defun typetopology-search--visit-agda-file (path)
+  "Visit PATH, switching the buffer into `agda2-mode' first if that
+mode is available and the buffer is not already in it (or a mode
+derived from it) -- shared by `typetopology-search--jump-to-source'
+and `typetopology-search--jump-to-mention', which otherwise land in a
+file the same way. `auto-mode-alist' normally puts a .lagda/.agda
+buffer straight into agda2-mode already, via the boilerplate agda2-mode's
+own install instructions have a user add to their init file -- this is
+only a fallback for when that hasn't happened (or hasn't happened YET,
+in whatever Emacs session this runs in), and does nothing at all,
+silently, if agda2-mode isn't loaded here, rather than erroring."
+  (find-file path)
+  (when (and (fboundp 'agda2-mode) (not (derived-mode-p 'agda2-mode)))
+    (agda2-mode)))
+
 (defun typetopology-search--jump-to-source (e)
   (let ((file (typetopology-search-entry-file e)))
     (when (string-empty-p file)
@@ -1022,17 +1065,49 @@ when it does run."
       (unless (file-exists-p path)
         (user-error "%s not found (typetopology-search-checkout-root is %s)"
                     path typetopology-search-checkout-root))
-      (find-file path)
-      ;; `auto-mode-alist' normally puts a .lagda/.agda buffer straight into
-      ;; agda2-mode already, via the boilerplate agda2-mode's own install
-      ;; instructions have a user add to their init file -- this is only a
-      ;; fallback for when that hasn't happened (or hasn't happened YET, in
-      ;; whatever Emacs session this runs in), and does nothing at all,
-      ;; silently, if agda2-mode isn't loaded here, rather than erroring.
-      (when (and (fboundp 'agda2-mode) (not (derived-mode-p 'agda2-mode)))
-        (agda2-mode))
+      (typetopology-search--visit-agda-file path)
       (goto-char (point-min))
       (forward-line (1- (typetopology-search-entry-line e))))))
+
+(defun typetopology-search--module-path (mod)
+  "MOD (a dotted module name) as a path under
+`typetopology-search--source-root', trying .lagda then .agda, or nil if
+neither exists -- the same fallback `agda-index.py's own source_file()
+makes when writing Definitions.tsv, redone here since a contributor's
+mentioning modules are not necessarily any INDEXED definition's own
+module (a module with prose but no definitions of its own -- an
+overview/index file, say -- can still name a contributor), so there is
+no precomputed FILE column to reuse for them the way a definition has."
+  (let* ((base (expand-file-name (replace-regexp-in-string "\\." "/" mod)
+                                 (typetopology-search--source-root)))
+         (lagda (concat base ".lagda"))
+         (agda (concat base ".agda")))
+    (cond ((file-exists-p lagda) lagda)
+          ((file-exists-p agda) agda))))
+
+(defun typetopology-search--jump-to-mention (person)
+  "Prompt for one of PERSON's mentioning modules (see
+`typetopology-search-entry-assumes', repurposed for a contributor to
+hold a semicolon-separated list of dotted module names instead of an
+enclosing-module hypothesis) and jump to its source file, at the very
+top -- unlike `typetopology-search--jump-to-source', there is no one
+specific definition to put point at, only the module PERSON is named
+somewhere in the commentary of."
+  (let ((modules (split-string (typetopology-search-entry-assumes person) ";" t)))
+    (unless modules
+      (user-error "No modules recorded for %s"
+                  (typetopology-search-entry-name person)))
+    (let* ((mod (typetopology-search--pick-from-list
+                (format "%s -- jump to which module? "
+                        (typetopology-search-entry-name person))
+                modules))
+           (path (and mod (typetopology-search--module-path mod))))
+      (unless path
+        (user-error "Source file for %s not found (typetopology-search-checkout-root is %s)"
+                    mod typetopology-search-checkout-root))
+      (typetopology-search--visit-agda-file path)
+      (goto-char (point-min))
+      (message "Jumped to %s" mod))))
 
 (defun typetopology-search--perform (action e)
   "Carry out ACTION on entry E -- except `update-index', which
@@ -1049,6 +1124,8 @@ ignores E entirely, since it does not act on any particular entry."
      (typetopology-search--jump-to-source e)
      (message "Jumped to %s, line %d"
               (typetopology-search-entry-file e) (typetopology-search-entry-line e)))
+    ('jump-to-mention
+     (typetopology-search--jump-to-mention e))
     ('update-index
      (typetopology-search-update-index))
     (_ (error "typetopology-search: unknown action %s" action))))
@@ -1071,8 +1148,9 @@ it; or update the index (see `typetopology-search-update-index') --
 the odd one out, since it does not act on the entry the menu was
 opened for at all, and so never becomes what RET repeats afterward. A
 contributor, matched by name, has no source file or module of their
-own to offer either of the first two, so only inserting their name and
-updating the index apply (see `typetopology-search--actions-for').
+own to jump to or open an import for directly -- instead, jump to one
+of the modules that mentions them, picked from a second list, or
+update the index (see `typetopology-search--actions-for').
 
 This searches the whole library regardless of what the current buffer
 has imported -- for a live, exactly-normalised type of something
