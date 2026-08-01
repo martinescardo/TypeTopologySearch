@@ -160,9 +160,10 @@ never shows up anywhere at all."
 result is easy to pick out at a glance rather than lost among a page
 of type signatures: the name in `bold', everything else -- signature,
 module, use count, and any assumption clause -- in `shadow', the
-standard Emacs face for de-emphasised text. Query-match highlighting
-is a separate step, in `typetopology-search--render', since it depends
-on what was actually typed, not on the entry alone."
+standard Emacs face for de-emphasised text, and the word \"assumes\"
+itself in `italic' on top of that. Query-match highlighting is a
+separate step, in `typetopology-search--render', since it depends on
+what was actually typed, not on the entry alone."
   (let* ((name (typetopology-search-entry-name e))
          (sig (typetopology-search-entry-sig e))
          (assumes (typetopology-search-entry-assumes e))
@@ -173,9 +174,13 @@ on what was actually typed, not on the entry alone."
                   (format ", %d uses" (typetopology-search-entry-uses e)))
                 "]"
                 (unless (string-empty-p assumes)
-                  (concat "  (assumes: " assumes ")")))))
-    (concat (propertize name 'face 'bold)
-            (propertize rest 'face 'shadow))))
+                  (concat "  (assumes: " assumes ")"))))
+         (rest (propertize rest 'face 'shadow)))
+    (unless (string-empty-p assumes)
+      (let ((pos (string-match-p (regexp-quote "(assumes: ") rest)))
+        (when pos
+          (add-face-text-property (1+ pos) (+ pos 8) 'italic nil rest))))
+    (concat (propertize name 'face 'bold) rest)))
 
 (defun typetopology-search--parse-line (line)
   "One Definitions.tsv line -> an entry, or nil for a malformed line (left
