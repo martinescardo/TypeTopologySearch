@@ -1120,6 +1120,85 @@ full of them, e.g. `ℤ*-assoc') is still literal, not a regexp."
   (should (string-match-p (typetopology-search--wildcard-regexp "a.b*") "a.bxyz"))
   (should-not (string-match-p (typetopology-search--wildcard-regexp "a.b*") "axb")))
 
+;; -------------------------------------------------------- path scoping
+
+(ert-deftest tt-search-split-in-scope-splits-keywords-and-path ()
+  (should (equal (typetopology-search--split-in-scope "compact in Ordinals.Comp")
+                '("compact" . "Ordinals.Comp")))
+  (should (equal (typetopology-search--split-in-scope "compact ordinal in Ordinals.Comp")
+                '("compact ordinal" . "Ordinals.Comp"))))
+
+(ert-deftest tt-search-split-in-scope-case-insensitive-in ()
+  (should (equal (typetopology-search--split-in-scope "compact IN Ordinals.Comp")
+                '("compact" . "Ordinals.Comp"))))
+
+(ert-deftest tt-search-split-in-scope-no-path-without-in ()
+  (should (equal (typetopology-search--split-in-scope "compact ordinal")
+                '("compact ordinal" . nil))))
+
+(ert-deftest tt-search-split-in-scope-bare-in-is-not-a-scope ()
+  "\"in\" alone, or \"in PATH\" with nothing before \"in\", has no
+keyword to search for, so it is left as an ordinary (two-word) query
+rather than treated as an empty-keyword scope -- matches the browser
+page's own regexp, which does not match either of these strings at all."
+  (should (equal (typetopology-search--split-in-scope "in") '("in" . nil)))
+  (should (equal (typetopology-search--split-in-scope "in Ordinals.Comp")
+                '("in Ordinals.Comp" . nil))))
+
+(ert-deftest tt-search-in-scope-p-prefix-on-last-segment-only ()
+  "The last path segment is only a prefix -- \"compact in Ordinals.Comp\"
+already reaches `Ordinals.CompactnessOfSuprema' while still being
+typed -- but a single-segment path is still just that one prefix
+match, not a hidden requirement for a second segment to exist."
+  (should (typetopology-search--in-scope-p "Ordinals.Comp" "Ordinals.CompactnessOfSuprema"))
+  (should (typetopology-search--in-scope-p "Ordinals" "Ordinals.CompactnessOfSuprema"))
+  (should (typetopology-search--in-scope-p "Ordinal" "Ordinals.CompactnessOfSuprema"))
+  (should-not (typetopology-search--in-scope-p "Xordinal" "Ordinals.CompactnessOfSuprema"))
+  (should-not (typetopology-search--in-scope-p "Ordinals.Comp" "Ordinals.InfProperty")))
+
+(ert-deftest tt-search-in-scope-p-case-insensitive ()
+  (should (typetopology-search--in-scope-p "ordinals.comp" "Ordinals.CompactnessOfSuprema")))
+
+(ert-deftest tt-search-in-scope-p-path-longer-than-module-never-matches ()
+  (should-not (typetopology-search--in-scope-p "Ordinals.CompactnessOfSuprema.Extra"
+                                               "Ordinals.CompactnessOfSuprema")))
+
+(ert-deftest tt-search-filter-scopes-by-in-path ()
+  (let ((typetopology-search--entries
+         (list (tt-search--entry-in "is-compact" "Ordinals.CompactnessOfSuprema")
+               (tt-search--entry-in "is-compact" "Locales.Compactness.Definition"))))
+    (should (equal (mapcar #'typetopology-search-entry-dispmod
+                          (typetopology-search--filter "compact in Ordinals.Comp"))
+                  '("Ordinals.CompactnessOfSuprema")))))
+
+(ert-deftest tt-search-filter-in-path-excludes-contributors ()
+  "A contributor has no module of its own, so an \" in PATH\" query
+never matches one, even when their name matches the keyword part."
+  (let ((typetopology-search--entries
+         (list (tt-search--sample-person-entry)
+               (tt-search--entry-in "Escardo-Knapp-Choice" "NotionsOfDecidability.SemiDecidable"))))
+    (should (equal (mapcar #'typetopology-search-entry-name
+                          (typetopology-search--filter "escardo in NotionsOfDecidability"))
+                  '("Escardo-Knapp-Choice")))))
+
+(ert-deftest tt-search-render-highlights-keywords-not-in-or-path ()
+  "The \" in PATH\" suffix must not itself become a highlight term --
+only the keyword part is, the same split `typetopology-search--filter'
+itself uses for matching. Checked by capturing exactly what terms
+`typetopology-search--render' hands to
+`typetopology-search--highlight-matches', rather than inferring it from
+buffer faces, since the keyword \"compact\" is itself a real substring
+of the module name here too and would confound a face-based check."
+  (let ((typetopology-search--entries
+         (list (tt-search--entry-in "is-compact" "Ordinals.CompactnessOfSuprema")))
+        (captured nil))
+    (cl-letf (((symbol-function 'typetopology-search--highlight-matches)
+               (lambda (_start _end terms) (setq captured terms))))
+      (let* ((matches (typetopology-search--filter "compact in Ordinals.Comp"))
+             (buf (typetopology-search--render "compact in Ordinals.Comp" matches 0)))
+        (kill-buffer buf)))
+    (should (equal (mapcar #'car captured) '("compact")))))
+
 (ert-deftest tt-search-filter-wildcard-star ()
   (let ((typetopology-search--entries
          (list (tt-search--entry "is-prop-valued") (tt-search--entry "is-set-valued")

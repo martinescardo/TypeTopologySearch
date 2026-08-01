@@ -585,6 +585,42 @@ lower-case)."
   (if (cdr term) (string-match-p (cdr term) text)
     (string-match-p (regexp-quote (car term)) text)))
 
+(defun typetopology-search--split-in-scope (query)
+  "QUERY split into (KEYWORDS . PATH) when it ends in a literal, whole
+\"in\" (case-insensitive) followed by one more, space-free word -- the
+same split the browser search page's own path-scoped search makes for
+\"compact in Ordinals.Comp\". PATH is nil, and KEYWORDS is QUERY
+unchanged, when QUERY does not end this way (in particular, \"in\"
+alone, or \"in PATH\" with nothing before \"in\", is left as an
+ordinary query, not treated as an empty-keyword scope -- an empty
+keyword search already matches nothing on its own, see
+`typetopology-search--filter')."
+  (let ((words (split-string query)))
+    (if (and (>= (length words) 3)
+            (string-equal (downcase (nth (- (length words) 2) words)) "in"))
+        (cons (string-join (butlast words 2) " ") (car (last words)))
+      (cons query nil))))
+
+(defun typetopology-search--in-scope-p (path mod)
+  "Whether MOD (a dotted module name) lies within PATH, the way the
+browser page's own path-scoped search does: PATH is split on \".\" into
+segments, every segment but the last must match a segment of MOD in
+full, case-insensitively, but the last segment is only a PREFIX of its
+corresponding MOD segment, so a scope narrows while still being typed
+-- \"compact in Ordinals.Comp\" already reaches
+`Ordinals.CompactnessOfSuprema'. MOD shorter than PATH (fewer segments)
+never matches, regardless of content."
+  (let ((psegs (split-string path "\\." t))
+        (msegs (split-string mod "\\." t)))
+    (and (<= (length psegs) (length msegs))
+        (let ((n (length psegs)) (ok t))
+          (dotimes (i n)
+            (unless (if (= i (1- n))
+                       (string-prefix-p (nth i psegs) (nth i msegs) t)
+                     (string-equal (downcase (nth i psegs)) (downcase (nth i msegs))))
+              (setq ok nil)))
+          ok))))
+
 (defun typetopology-search--filter (query)
   "Every entry whose display text matches each whitespace-separated term
 of QUERY, case-insensitively, in any order -- simple and predictable
@@ -602,28 +638,39 @@ kept whatever order Definitions.tsv happened to list them in
 matched literally unless it contains `*', `?', or `\\', in which case
 it is a wildcard pattern -- see `typetopology-search--wildcard-regexp'.
 An empty query matches nothing: there is no value in a wall of all
-21,000 definitions before anything has been typed."
+21,000 definitions before anything has been typed.
+
+A query ending in \" in PATH\" (see `typetopology-search--split-in-scope')
+additionally requires the entry's own module to lie within PATH (see
+`typetopology-search--in-scope-p') -- PATH itself plays no part in the
+term matching above, only KEYWORDS does. A contributor entry has no
+module of its own, so it never survives an \" in PATH\" query at all;
+only definitions are scoped this way for now."
   (if (string-blank-p query)
       nil
-    (let* ((terms (typetopology-search--terms query))
-           (matches (cl-remove-if-not
-                     (lambda (e)
-                       (let ((text (typetopology-search-entry-dtext e)))
-                         (cl-every (lambda (term) (typetopology-search--term-match-p term text))
-                                   terms)))
-                     typetopology-search--entries)))
-      (sort matches
-           (lambda (a b)
-             (let ((aa (typetopology-search--entry-area a))
-                   (ab (typetopology-search--entry-area b)))
-               (if (/= aa ab)
-                   (< aa ab)
-                 (let ((sa (typetopology-search--entry-score a terms))
-                       (sb (typetopology-search--entry-score b terms)))
-                   (if (= sa sb)
-                       (> (typetopology-search-entry-uses a)
-                          (typetopology-search-entry-uses b))
-                     (< sa sb))))))))))
+    (pcase-let ((`(,keywords . ,path) (typetopology-search--split-in-scope query)))
+      (let* ((terms (typetopology-search--terms keywords))
+             (matches (cl-remove-if-not
+                       (lambda (e)
+                         (and (or (null path)
+                                 (typetopology-search--in-scope-p
+                                  path (typetopology-search-entry-importmod e)))
+                             (let ((text (typetopology-search-entry-dtext e)))
+                               (cl-every (lambda (term) (typetopology-search--term-match-p term text))
+                                         terms))))
+                       typetopology-search--entries)))
+        (sort matches
+             (lambda (a b)
+               (let ((aa (typetopology-search--entry-area a))
+                     (ab (typetopology-search--entry-area b)))
+                 (if (/= aa ab)
+                     (< aa ab)
+                   (let ((sa (typetopology-search--entry-score a terms))
+                         (sb (typetopology-search--entry-score b terms)))
+                     (if (= sa sb)
+                         (> (typetopology-search-entry-uses a)
+                            (typetopology-search-entry-uses b))
+                       (< sa sb)))))))))))
 
 ;; ------------------------------------------------------ showing the list
 
@@ -699,7 +746,8 @@ possibly missing recent definitions)"
          (t
           (let ((shown (seq-take matches typetopology-search--max-shown))
                 (terms (and query (not (string-blank-p query))
-                           (typetopology-search--terms query)))
+                           (typetopology-search--terms
+                            (car (typetopology-search--split-in-scope query)))))
                 (i 0))
             (dolist (e shown)
               (let ((start (point)))
