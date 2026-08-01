@@ -35,6 +35,10 @@ page](https://martinescardo.github.io/TypeTopologySearch.html) and an
 
 Clone this repository first:
 
+    git clone git@github.com:martinescardo/TypeTopologySearch.git
+
+or
+
     git clone https://github.com/martinescardo/TypeTopologySearch.git
 
 ### Using the Makefile
