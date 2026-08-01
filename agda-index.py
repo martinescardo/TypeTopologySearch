@@ -1343,12 +1343,35 @@ def render(source, entry, htmldir, agda):
         return
     print(f"{agda} --html --html-dir={htmldir} {entry}   (a minute or so cold)")
     try:
-        subprocess.run([agda, "--html", f"--html-dir={htmldir}", entry],
-                       cwd=source, check=True)
+        proc = subprocess.Popen([agda, "--html", f"--html-dir={htmldir}", entry],
+                                cwd=source, stdout=subprocess.PIPE,
+                                stderr=subprocess.STDOUT, text=True)
     except FileNotFoundError:
         raise SystemExit(f"{agda} not found; install it or pass --html <dir>")
-    except subprocess.CalledProcessError as e:
-        raise SystemExit(f"{agda} failed with status {e.returncode}")
+    # Streamed rather than captured outright, so the "Checking Foo.Bar"
+    # progress lines (a cold run is a minute or two) still appear live as
+    # they always have; Agda's own diagnostic -- which file, which line --
+    # is still visible above the summary message below, for whichever of
+    # the two this turns out to be.
+    for line in proc.stdout:
+        print(line, end="")
+    proc.wait()
+    if proc.returncode != 0:
+        # No fix on this script's own side for the most common cause, an
+        # open interaction point (a "?", mid-proof): the command-line flag
+        # Agda's own error suggests, --allow-unsolved-metas, is itself
+        # incompatible with --safe, which TypeTopology uses throughout, so
+        # it fails the SAME way on the very next --safe module checked,
+        # hole or not (confirmed the hard way before settling on this
+        # message instead). An ordinary type checking error is the other
+        # possibility, equally fatal to the whole render either way -- one
+        # message covers both, since this script cannot tell them apart
+        # from the exit status alone, and either way nothing past this
+        # point runs, so whatever index already existed is untouched.
+        raise SystemExit(
+            "the index cannot be updated when there are holes or "
+            "type checking errors in the Agda files; the previous index, "
+            "if any, has been left as is")
 
 
 def main():

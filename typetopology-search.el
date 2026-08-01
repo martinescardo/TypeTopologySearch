@@ -16,12 +16,12 @@
 ;; data from Definitions.tsv, next to it, and builds
 ;; that file itself (by running agda-index.py --emacs-index, also next
 ;; to it) the first time it is needed and is not there yet -- no
-;; separate manual step. After that, `typetopology-search-prompt-to-regenerate'
+;; separate manual step. After that, `typetopology-search-warn-when-stale'
 ;; (on by default) notices, cheaply, whenever the source has definitions
-;; newer than the index and asks, once, whether to rebuild before
-;; searching; `typetopology-search-regenerate-index' remains the manual
-;; way to force this at any time, and turning that variable off goes
-;; back to relying on it exclusively.
+;; newer than the index and shows a bold reminder right alongside the
+;; results, rather than blocking search on a prompt; `C-c C-u' during
+;; the search itself, or `typetopology-search-update-index' by hand
+;; any other time, rebuilds it.
 
 ;;; Code:
 
@@ -74,7 +74,7 @@ repository it came from."
   "The generator script, run as \"agda-index.py --emacs-index\" to
 (re)produce `typetopology-search-file'. Run automatically when that
 file does not exist yet, so that requiring this one file is the whole
-setup; also what `typetopology-search-regenerate-index' runs by hand
+setup; also what `typetopology-search-update-index' runs by hand
 afterwards. Set to nil to disable both and always require the file to
 already exist, built some other way.
 
@@ -85,26 +85,28 @@ format is tied to the exact script version that wrote it, keep
 whichever one this points at in sync with this file's own version
 (the same checkout, or the same commit) rather than pointing it at an
 unrelated or older copy."
-  :type '(choice file (const :tag "Never regenerate automatically" nil))
+  :type '(choice file (const :tag "Never update automatically" nil))
   :group 'typetopology-search)
 
-(defcustom typetopology-search-prompt-to-regenerate t
+(defcustom typetopology-search-warn-when-stale t
   "Whether `typetopology-search--ensure-loaded' checks the TypeTopology
 source for definitions newer than `typetopology-search-file' and, when
-it finds any, asks -- once, right before showing results -- whether to
-rebuild the index first or search the existing one as it is.
+it finds any, shows a bold one-line reminder right alongside the
+results (see `typetopology-search--render') -- search still runs
+against the existing index regardless, just possibly missing recent
+definitions; `C-c C-u' during the search, or
+`typetopology-search-update-index' by hand at any other time, rebuilds
+it.
 
 The check itself only compares file modification times (the same
 comparison `agda-index.py's own render() makes for the html rendering,
 aimed at the index instead), so it costs nothing noticeable even when
-this is on; answering \"no\" is remembered, so the same staleness is
-not asked about again on every subsequent search, only a further edit
-past that point.
+this is on.
 
-Set to nil for the old, fully manual behaviour instead: the index is
-still built once automatically the very first time it does not exist
-yet, but never checked or refreshed again except by an explicit
-`typetopology-search-regenerate-index'."
+Set to nil to skip the check, and the reminder, altogether -- the
+index is still built once automatically the very first time it does
+not exist yet, but never checked again after that except by an
+explicit `typetopology-search-update-index' or `C-c C-u'."
   :type 'boolean
   :group 'typetopology-search)
 
@@ -127,17 +129,14 @@ yet, but never checked or refreshed again except by an explicit
   "All entries, most-recently loaded from `typetopology-search-file'.")
 (defvar typetopology-search--loaded-mtime nil
   "The modification time Definitions.tsv had when last loaded, so an
-edit-and-regenerate is picked up automatically on the next search
-without needing an explicit reload command.")
-(defvar typetopology-search--regeneration-declined nil
-  "Non-nil once `typetopology-search--maybe-prompt-to-regenerate' has
-been told \"no\" this Emacs session -- from then on it stops asking
-altogether, for the rest of the session, rather than just until the
-next edit: edits are constant while writing Agda, so re-asking after
-every one of them would defeat the point of declining once. Cleared by
-restarting Emacs, or by an explicit
-`typetopology-search-regenerate-index', either of which means a later
-edit is worth noticing again.")
+edit-and-update is picked up automatically on the next search without
+needing an explicit reload command.")
+(defvar typetopology-search--index-stale nil
+  "Whether `typetopology-search--check-staleness' last found the source
+newer than `typetopology-search-file' -- read by
+`typetopology-search--render' to show a bold reminder alongside the
+results, rather than blocking search the way earlier versions of this
+file did.")
 
 (defun typetopology-search--display (e)
   "The candidate text shown for entry E, mirroring Definitions.txt's own
@@ -213,13 +212,13 @@ lenient on purpose, so one bad line does not take the whole index down)."
         (forward-line 1)))
     (setq typetopology-search--entries (nreverse entries))))
 
-(defun typetopology-search--regenerate ()
+(defun typetopology-search--rebuild ()
   "Run `typetopology-search-generator' to (re)produce
 `typetopology-search-file'. Blocks Emacs for however long that takes --
 unavoidable the very first time, when there is nothing to search yet
 without it; a cold run (agda has to typecheck and render the whole
 library first) takes a while, a warm one (the rendering is already up
-to date, only Definitions.tsv itself is regenerated) closer to ten
+to date, only Definitions.tsv itself is updated) closer to ten
 seconds."
   (unless (and typetopology-search-generator
               (file-exists-p typetopology-search-generator))
@@ -266,22 +265,20 @@ subdirectory -- set it to your TypeTopology directory"
   (message "TypeTopology: search index built."))
 
 ;;;###autoload
-(defun typetopology-search-regenerate-index ()
+(defun typetopology-search-update-index ()
   "Rebuild the TypeTopology search index by hand -- after adding,
-renaming, or removing definitions, say, when you would rather not wait
-for (or have turned off `typetopology-search-prompt-to-regenerate').
-Also lifts a previous decline (see
-`typetopology-search--regeneration-declined'), so a later edit is
-noticed again."
+renaming, or removing definitions, say. `C-c C-u' does the same thing
+without leaving an in-progress search (see
+`typetopology-search--minibuffer-map')."
   (interactive)
-  (typetopology-search--regenerate)
+  (typetopology-search--rebuild)
   (typetopology-search--load typetopology-search-file)
   (setq typetopology-search--loaded-mtime
         (file-attribute-modification-time
          (file-attributes typetopology-search-file)))
-  (setq typetopology-search--regeneration-declined nil))
+  (setq typetopology-search--index-stale nil))
 
-;; ------------------------------------------------------ staleness prompt
+;; ------------------------------------------------------- staleness check
 
 (defun typetopology-search--git-tracked-agda-files ()
   "The TypeTopology source's own .lagda/.agda files, as `git ls-files'
@@ -315,45 +312,31 @@ itself is nil -- in which case staleness is never suspected at all."
           (setq newest mtime))))
     newest))
 
-(defun typetopology-search--maybe-prompt-to-regenerate ()
-  "When `typetopology-search-prompt-to-regenerate' is non-nil and the
-source has a definition newer than `typetopology-search-file', ask
-once whether to rebuild it now (blocking, the same as
-`typetopology-search-regenerate-index') before continuing -- answering
-\"no\" searches the existing index instead, and is not asked again for
-the rest of this Emacs session (see
-`typetopology-search--regeneration-declined')."
-  (when (and typetopology-search-prompt-to-regenerate
-            typetopology-search-generator
-            (not typetopology-search--regeneration-declined)
-            (file-exists-p typetopology-search-file))
-    (let ((newest (typetopology-search--newest-source-mtime))
-          (index-mtime (file-attribute-modification-time
-                        (file-attributes typetopology-search-file))))
-      (when (and newest (time-less-p index-mtime newest))
-        (if (y-or-n-p "TypeTopology: the index looks older than the source \
--- regenerate it now? (search still works either way, just less \
-accurately without it. You can manually regenerate the index at any \
-time by doing M-x typetopology-search-regenerate-index.) ")
-            (progn
-              (typetopology-search--regenerate)
-              (typetopology-search--load typetopology-search-file)
-              (setq typetopology-search--loaded-mtime
-                    (file-attribute-modification-time
-                     (file-attributes typetopology-search-file))))
-          (setq typetopology-search--regeneration-declined t)
-          (message "TypeTopology: searching the existing index as is."))))))
+(defun typetopology-search--check-staleness ()
+  "Set `typetopology-search--index-stale' from a cheap mtime comparison
+between `typetopology-search-file' and the source (see
+`typetopology-search--newest-source-mtime') when
+`typetopology-search-warn-when-stale' is non-nil -- nil (\"not stale\")
+otherwise, including whenever this cannot be determined at all."
+  (setq typetopology-search--index-stale
+        (and typetopology-search-warn-when-stale
+            (file-exists-p typetopology-search-file)
+            (let ((newest (typetopology-search--newest-source-mtime)))
+              (and newest
+                  (time-less-p (file-attribute-modification-time
+                                (file-attributes typetopology-search-file))
+                               newest))))))
 
 (defun typetopology-search--ensure-loaded ()
-  "Load the index, regenerating it first if it does not exist yet and a
+  "Load the index, building it first if it does not exist yet and a
 generator script is available (see `typetopology-search-generator'),
 and reload it whenever the file's own mtime has changed since --
-picking up a `typetopology-search-regenerate-index' or a by-hand rerun
-of agda-index.py alike, with no separate reload step to remember.
-Finally, see `typetopology-search--maybe-prompt-to-regenerate'."
+picking up a `typetopology-search-update-index' or a by-hand rerun of
+agda-index.py alike, with no separate reload step to remember.
+Finally, see `typetopology-search--check-staleness'."
   (unless (and typetopology-search-file (file-exists-p typetopology-search-file))
     (if typetopology-search-generator
-        (typetopology-search--regenerate)
+        (typetopology-search--rebuild)
       (user-error "TypeTopology index not found (%s) -- run \
 agda-index.py --emacs-index, or set typetopology-search-file"
                   typetopology-search-file)))
@@ -363,23 +346,29 @@ agda-index.py --emacs-index, or set typetopology-search-file"
                  (equal mtime typetopology-search--loaded-mtime))
       (typetopology-search--load typetopology-search-file)
       (setq typetopology-search--loaded-mtime mtime)))
-  (typetopology-search--maybe-prompt-to-regenerate))
+  (typetopology-search--check-staleness))
 
 ;; ------------------------------------------------------- picking a result
 
 (defconst typetopology-search--actions
-  '(("Insert the name at point"                      . insert-name)
-    ("Jump to its definition in the source file"      . jump-to-source)
-    ("Insert \"open import Module\" for its module"   . insert-import))
+  '(("Jump to its definition in the source file"      . jump-to-source)
+    ("Insert the name at point"                      . insert-name)
+    ("Insert \"open import Module\" for its module"   . insert-import)
+    ("Update the index"                              . update-index))
   "What a result can be turned into, in the order offered on the menu.
 The labels are shown as-is in the action menu, so they are written to
-stand alone without needing a separate description column.")
+stand alone without needing a separate description column. The last
+entry, updating the index, is unlike the other three: it does not act
+on the entry the menu was opened for at all, and -- see
+`typetopology-search--choose-action' -- never becomes the sticky
+default plain RET repeats, unlike the other three.")
 
 (defvar typetopology-search--last-action nil
   "The action last chosen from the menu, this Emacs session -- nil means
 the menu has never been shown yet, which forces it once regardless of
-RET or TAB, so the three choices are seen at least once before either
-becomes an unexplained default.")
+RET or TAB, so the choices that can become a default are seen at least
+once before becoming an unexplained one. Never set to `update-index'
+-- see `typetopology-search--choose-action'.")
 
 (defun typetopology-search--action-label (action)
   (car (rassq action typetopology-search--actions)))
@@ -389,9 +378,19 @@ becomes an unexplained default.")
 which agda2-mode already loads, registers it under the literal name
 \"Agda\") for this one minibuffer read -- silently does nothing if it
 is not available, rather than erroring, since this file does not
-require agda2-mode to be loaded to work at all."
+require agda2-mode to be loaded to work at all.
+
+Also silently does nothing if activating it errors out instead --
+hit in real use as \"Command attempted to use minibuffer while in
+minibuffer\", from inside `activate-input-method' itself, on its very
+first use in a session. Left unguarded, that error aborts the rest of
+this minibuffer-setup-hook (in particular, `typetopology-search--show-results'
+is never reached, so no results appear at all) -- a Unicode-typing
+convenience should never be able to take the whole search down.
+`ignore-errors', not a plain `condition-case', so `C-g' still
+interrupts normally; only a genuine error is swallowed."
   (when (or (featurep 'agda-input) (assoc "Agda" input-method-alist))
-    (activate-input-method "Agda")))
+    (ignore-errors (activate-input-method "Agda"))))
 
 (defvar typetopology-search--history nil
   "This prompt's own minibuffer history (past searches, reachable with
@@ -612,12 +611,30 @@ selection machinery with plain strings and `identity' instead of
 entries, rather than duplicating it for a second, smaller UI. QUERY
 nil (as opposed to the empty string) means there is no typed-query
 concept at all here -- the action menu's fixed, always-shown list --
-so the \"nothing typed yet\" message never applies."
+so the \"nothing typed yet\" message never applies, and neither does
+the staleness reminder just below.
+
+When QUERY is non-nil and `typetopology-search--index-stale' is
+non-nil, a bold reminder line goes first, ahead of the matches
+themselves -- shown together with the results, in the same buffer and
+window, deliberately: two earlier attempts at showing this
+separately (a header-line, a mode-line, a second child frame stacked
+next to this one) each turned out either too easy to miss or,
+independently, unreliable in real use (content not always painted
+before the first keystroke; a second frame once left the minibuffer's
+own window a single line tall after TAB). Bold, and first, rather than
+dimmed and tucked out of the way, is deliberately hard to miss instead."
   (let ((buf (get-buffer-create typetopology-search--results-buffer-name))
         (display-fn (or display-fn #'typetopology-search--display)))
     (with-current-buffer buf
       (let ((inhibit-read-only t) (selected-pos nil))
         (erase-buffer)
+        (when (and query typetopology-search--index-stale)
+          (insert (propertize "TypeTopology: the index looks older than the \
+source -- press C-c C-u to update it (search still works, just \
+possibly missing recent definitions)"
+                              'face 'bold))
+          (insert "\n\n"))
         (cond
          ((and query (string-blank-p query)) (insert "Type to search..."))
          ((null matches) (insert "No matches."))
@@ -660,6 +677,13 @@ bottom of the frame, once, for the duration of the read;
   (display-buffer (get-buffer-create typetopology-search--results-buffer-name)
                   '((display-buffer-at-bottom)
                     (window-height . 0.3))))
+
+(defun typetopology-search--cleanup-results ()
+  "Kill the results buffer once a minibuffer read using it has finished.
+Shared by `typetopology-search--read-candidate' and
+`typetopology-search--choose-action'."
+  (let ((buf (get-buffer typetopology-search--results-buffer-name)))
+    (when buf (kill-buffer buf))))
 
 ;; --------------------------------------------------------- moving around
 
@@ -750,10 +774,31 @@ well defined once there is at least one match."
   (interactive)
   (typetopology-search--confirm t))
 
+(defun typetopology-search--update-from-search ()
+  "Rebuild the index right now, without leaving the search -- the same
+work `typetopology-search-update-index' does, plus refiltering so
+the results (and the bold reminder ahead of them, see
+`typetopology-search--render') reflect it immediately. Blocks Emacs for
+however long that takes (see `typetopology-search--rebuild'); bound
+to `C-c C-u' precisely so it is reachable the moment the staleness
+reminder is noticed, deliberately with no confirmation of its own --
+pressing this key already is the ask. Not `C-c C-r': confirmed against
+the real `agda2-mode-map' to already be `agda2-refine' there, so that
+would have silently done nothing (see
+`typetopology-search--read-candidate' for why a minor mode's own
+binding wins over an ordinary local one regardless). Not offered from
+the action menu (`typetopology-search--action-minibuffer-map' has no
+binding for it): that menu is not itself a search, and has no reminder
+of its own to react to."
+  (interactive)
+  (typetopology-search-update-index)
+  (typetopology-search--refilter))
+
 (defvar typetopology-search--minibuffer-map
   (let ((m (make-sparse-keymap)))
     (define-key m (kbd "<down>") #'typetopology-search--select-next)
     (define-key m (kbd "<up>") #'typetopology-search--select-prev)
+    (define-key m (kbd "C-c C-u") #'typetopology-search--update-from-search)
     (define-key m (kbd "RET") #'typetopology-search--confirm-ret)
     (define-key m (kbd "TAB") #'typetopology-search--confirm-tab)
     m)
@@ -784,27 +829,48 @@ vertical-completion mode's own inconsistent window-height handling in
 real use), this owns the whole interaction instead: filtering,
 rendering, and arrow-key selection are all this file's own code, so
 they behave the same regardless of what -- if anything -- is
-configured elsewhere."
+configured elsewhere.
+
+Installs `typetopology-search--minibuffer-map' via `set-transient-map',
+not the plain `use-local-map'/`make-composed-keymap' this used to do --
+a real bug hit in use: an ordinary local keymap sits BELOW any active
+minor mode's own keymap in Emacs's own lookup order (see *note Active
+Keymaps:: in the Elisp manual), and does not necessarily win against a
+major mode's own map either, depending on exactly how and where a key
+ends up looked up. Confirmed directly against the real `agda2-mode-map'
+(not assumed): `C-c C-r', this map's original choice for updating
+the index (see `typetopology-search--update-from-search'), is
+`agda2-refine' there, and something -- not fully pinned down, possibly
+this same precedence gap, possibly a separate focus issue in what has
+since been simplified away below -- let that binding fire instead of
+ours. `set-transient-map' installs via `overriding-terminal-local-map',
+which the Elisp manual documents as outranking _all_ other keymaps
+unconditionally, closing off that whole class of problem regardless of
+the exact mechanism. Keys not in our map still fall through to normal
+lookup exactly as before (self-insert, M-p/M-n history, ...), per its
+own docstring, so nothing else about typing in this minibuffer
+changes."
   (setq typetopology-search--result nil)
-  (unwind-protect
-      (minibuffer-with-setup-hook
-          (lambda ()
-            (use-local-map
-             (make-composed-keymap typetopology-search--minibuffer-map
-                                   (current-local-map)))
-            (setq typetopology-search--display-fn
-                  #'typetopology-search--display-propertized)
-            (typetopology-search--activate-agda-input)
-            (typetopology-search--no-default-completions)
-            (add-hook 'post-command-hook
-                      #'typetopology-search--maybe-refilter
-                      nil t)
-            (typetopology-search--show-results)
-            (typetopology-search--maybe-refilter))
-        (read-from-minibuffer (typetopology-search--read-prompt) nil nil nil
-                              'typetopology-search--history))
-    (let ((buf (get-buffer typetopology-search--results-buffer-name)))
-      (when buf (kill-buffer buf))))
+  (let (exit-transient-map)
+    (unwind-protect
+        (minibuffer-with-setup-hook
+            (lambda ()
+              (setq exit-transient-map
+                    (set-transient-map typetopology-search--minibuffer-map
+                                       (lambda () t)))
+              (setq typetopology-search--display-fn
+                    #'typetopology-search--display-propertized)
+              (typetopology-search--activate-agda-input)
+              (typetopology-search--no-default-completions)
+              (add-hook 'post-command-hook
+                        #'typetopology-search--maybe-refilter
+                        nil t)
+              (typetopology-search--show-results)
+              (typetopology-search--maybe-refilter))
+          (read-from-minibuffer (typetopology-search--read-prompt) nil nil nil
+                                'typetopology-search--history))
+      (when exit-transient-map (funcall exit-transient-map))
+      (typetopology-search--cleanup-results)))
   typetopology-search--result)
 
 (defvar typetopology-search--action-history nil
@@ -839,7 +905,10 @@ which has no separate meaning here.")
 
 (defun typetopology-search--choose-action (entry &optional first-time)
   "Prompt for one of `typetopology-search--actions' and remember it as
-the new default -- the \"sticky\" half of RET repeating the last choice.
+the new default -- the \"sticky\" half of RET repeating the last choice
+-- unless it is `update-index', which never becomes a default: it
+does not act on ENTRY at all, so there is nothing sensible for a later
+RET on some unrelated result to \"repeat\".
 ENTRY, the result just picked, is shown first, so the prompt asking
 what to do with it is never divorced from what \"it\" actually is.
 FIRST-TIME says whether this is the very first pick this session, purely
@@ -850,20 +919,26 @@ Uses the same own arrow-key selection UI as the main search
 the identical reason: with `completing-read', arrow keys depend on
 whatever completion setup, if any, happens to be configured, which is
 exactly what broke here too (\"same problem we had in the search
-box\", his own words) before this fix, by the same underlying cause."
+box\", his own words) before this fix, by the same underlying cause.
+Installed via `set-transient-map', not `use-local-map', for the same
+reason `typetopology-search--read-candidate' now does -- see its own
+docstring."
   (let* ((prompt (concat (typetopology-search--display entry) "\n"
                          (if first-time
                              "First pick -- choose what happens (becomes your \
-default from now on; TAB re-opens this menu later): "
-                           "Choose an action (becomes the new default): ")))
-         (labels (mapcar #'car typetopology-search--actions)))
+default from now on, except updating the index; TAB re-opens this \
+menu later): "
+                           "Choose an action (becomes the new default, except \
+updating the index): ")))
+         (labels (mapcar #'car typetopology-search--actions))
+         exit-transient-map)
     (setq typetopology-search--action-result nil)
     (unwind-protect
         (minibuffer-with-setup-hook
             (lambda ()
-              (use-local-map
-               (make-composed-keymap typetopology-search--action-minibuffer-map
-                                     (current-local-map)))
+              (setq exit-transient-map
+                    (set-transient-map typetopology-search--action-minibuffer-map
+                                       (lambda () t)))
               (typetopology-search--no-default-completions)
               (setq typetopology-search--matches labels
                     typetopology-search--selected 0
@@ -873,11 +948,12 @@ default from now on; TAB re-opens this menu later): "
               (typetopology-search--render nil labels 0 #'identity))
           (read-from-minibuffer prompt nil nil nil
                                 'typetopology-search--action-history))
-      (let ((buf (get-buffer typetopology-search--results-buffer-name)))
-        (when buf (kill-buffer buf))))
+      (when exit-transient-map (funcall exit-transient-map))
+      (typetopology-search--cleanup-results))
     (let ((action (cdr (assoc typetopology-search--action-result
                               typetopology-search--actions))))
-      (setq typetopology-search--last-action action)
+      (unless (eq action 'update-index)
+        (setq typetopology-search--last-action action))
       action)))
 
 (defun typetopology-search--decide-action (entry via-tab)
@@ -914,6 +990,8 @@ menu's own prompt when it does run."
       (forward-line (1- (typetopology-search-entry-line e))))))
 
 (defun typetopology-search--perform (action e)
+  "Carry out ACTION on entry E -- except `update-index', which
+ignores E entirely, since it does not act on any particular entry."
   (pcase action
     ('insert-name
      (insert (typetopology-search-entry-name e))
@@ -926,6 +1004,8 @@ menu's own prompt when it does run."
      (typetopology-search--jump-to-source e)
      (message "Jumped to %s, line %d"
               (typetopology-search-entry-file e) (typetopology-search-entry-line e)))
+    ('update-index
+     (typetopology-search-update-index))
     (_ (error "typetopology-search: unknown action %s" action))))
 
 ;;;###autoload
@@ -934,14 +1014,17 @@ menu's own prompt when it does run."
 and act on the one you pick.
 
 Plain RET repeats whatever action you last chose (or, the very first
-time this is used in a session, opens a menu to choose one, so all
-three are seen at least once). TAB, once your typing already names a
-candidate exactly, opens that same menu on demand without changing
-what RET repeats afterward -- unless you pick something different from
-it, in which case that becomes the new default.
+time this is used in a session, opens a menu to choose one, so all are
+seen at least once). TAB, once your typing already names a candidate
+exactly, opens that same menu on demand without changing what RET
+repeats afterward -- unless you pick something different from it, in
+which case that becomes the new default.
 
-The three actions are: insert the matched name at point; jump to its
-definition in the source; or insert \"open import Module\" for it.
+The choices are: jump to its definition in the source; insert the
+matched name at point; insert \"open import Module\" for it; or
+update the index (see `typetopology-search-update-index') -- the odd
+one out, since it does not act on the entry the menu was opened for at
+all, and so never becomes what RET repeats afterward.
 
 This searches the whole library regardless of what the current buffer
 has imported -- for a live, exactly-normalised type of something

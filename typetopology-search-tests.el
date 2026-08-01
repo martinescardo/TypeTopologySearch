@@ -124,7 +124,7 @@ true here: it never shows up any other way."
                          '("foo" "bar"))))
       (delete-file file))))
 
-(ert-deftest tt-search-ensure-loaded-picks-up-regeneration ()
+(ert-deftest tt-search-ensure-loaded-picks-up-update ()
   "Editing the file (a later mtime) is picked up on the next call, with no
 separate reload step -- this is what makes \"just re-run agda-index.py\"
 enough."
@@ -146,7 +146,7 @@ enough."
           (should (= (length typetopology-search--entries) 2)))
       (delete-file file))))
 
-;; --------------------------------------------------------- regeneration
+;; -------------------------------------------------------------- update
 
 (ert-deftest tt-search-default-generator-prefers-sibling-file ()
   "A copy right next to typetopology-search.el itself wins, even when
@@ -203,7 +203,7 @@ exits non-zero instead."
        "#!/bin/sh\nDIR=$(dirname \"$0\")\nprintf 'foo\\tM\\tM\\tM.lagda\\t1\\t0\\t\\t\\n' > \"$DIR/Definitions.tsv\"\n")))
   (set-file-modes path #o755))
 
-(ert-deftest tt-search-ensure-loaded-regenerates-when-missing ()
+(ert-deftest tt-search-ensure-loaded-builds-when-missing ()
   "The actual complaint this was built for: requiring the file alone,
 with no separate manual `agda-index.py --emacs-index' step, is enough
 the very first time, when there is no index yet at all."
@@ -224,22 +224,22 @@ the very first time, when there is no index yet at all."
                          "foo")))
       (delete-directory dir t))))
 
-(ert-deftest tt-search-regenerate-errors-clearly-on-failure ()
+(ert-deftest tt-search-rebuild-errors-clearly-on-failure ()
   (let* ((dir (make-temp-file "tt-search-gen" t))
          (typetopology-search-generator (expand-file-name "agda-index.py" dir)))
     (unwind-protect
         (progn
           (tt-search--write-fake-generator typetopology-search-generator t)
-          (let ((err (should-error (typetopology-search--regenerate))))
+          (let ((err (should-error (typetopology-search--rebuild))))
             (should (string-match-p "boom" (cadr err)))))
       (delete-directory dir t))))
 
-(ert-deftest tt-search-regenerate-user-error-without-generator ()
+(ert-deftest tt-search-rebuild-user-error-without-generator ()
   (let ((typetopology-search-generator nil)
         (typetopology-search-file "/nonexistent-dir/Definitions.tsv"))
-    (should-error (typetopology-search--regenerate) :type 'user-error)))
+    (should-error (typetopology-search--rebuild) :type 'user-error)))
 
-(ert-deftest tt-search-regenerate-user-error-bad-checkout-root ()
+(ert-deftest tt-search-rebuild-user-error-bad-checkout-root ()
   "The generator is deployable separately from any particular
 TypeTopology directory, so a checkout root whose source/ subdirectory
 does not actually exist (never set, or set wrong) is caught here with
@@ -251,10 +251,10 @@ agda-index.py itself failing to find anything to render."
     (unwind-protect
         (progn
           (tt-search--write-fake-generator typetopology-search-generator)
-          (should-error (typetopology-search--regenerate) :type 'user-error))
+          (should-error (typetopology-search--rebuild) :type 'user-error))
       (delete-directory dir t))))
 
-(ert-deftest tt-search-regenerate-passes-source-and-out-explicitly ()
+(ert-deftest tt-search-rebuild-passes-source-and-out-explicitly ()
   "Confirms the actual arguments passed to the generator, not just that
 SOME invocation succeeds -- this is what makes deploying
 typetopology-search.el and agda-index.py somewhere other than inside
@@ -272,14 +272,14 @@ falling back to agda-index.py's own directory-relative defaults."
           (cl-letf (((symbol-function 'call-process)
                      (lambda (_prog _infile _dest _display &rest args)
                        (setq seen-args args) 0)))
-            (typetopology-search--regenerate))
+            (typetopology-search--rebuild))
           (should (equal seen-args
                         (list "--emacs-index" "--no-html"
                               "--source" (expand-file-name "source" dir)
                               "--out" (file-name-directory typetopology-search-file)))))
       (delete-directory dir t))))
 
-(ert-deftest tt-search-regenerate-expands-tilde-in-checkout-root ()
+(ert-deftest tt-search-rebuild-expands-tilde-in-checkout-root ()
   "The actual bug hit in real use: call-process hands its argument
 strings to the subprocess exactly as given, with none of the \"~\"
 expansion Emacs's own file functions (file-directory-p, used in the
@@ -305,7 +305,7 @@ have caught it."
           (cl-letf (((symbol-function 'call-process)
                      (lambda (_prog _infile _dest _display &rest args)
                        (setq seen-args args) 0)))
-            (typetopology-search--regenerate))
+            (typetopology-search--rebuild))
           (let ((source-arg (nth (1+ (cl-position "--source" seen-args
                                                   :test #'equal))
                                  seen-args)))
@@ -315,7 +315,7 @@ have caught it."
       (delete-directory dir t)
       (delete-directory real-home-dir t))))
 
-(ert-deftest tt-search-regenerate-index-command-reloads ()
+(ert-deftest tt-search-update-index-command-reloads ()
   (let* ((dir (make-temp-file "tt-search-gen" t))
          (typetopology-search-generator (expand-file-name "agda-index.py" dir))
          (typetopology-search-file (expand-file-name "Definitions.tsv" dir))
@@ -324,12 +324,12 @@ have caught it."
     (unwind-protect
         (progn
           (tt-search--write-fake-generator typetopology-search-generator)
-          (typetopology-search-regenerate-index)
+          (typetopology-search-update-index)
           (should (= (length typetopology-search--entries) 1))
           (should typetopology-search--loaded-mtime))
       (delete-directory dir t))))
 
-;; ------------------------------------------------------- staleness prompt
+;; ------------------------------------------------------------- staleness
 
 (defun tt-search--init-git-repo (dir)
   "Turn DIR into a minimal git repo, quietly -- just enough for `git
@@ -365,109 +365,125 @@ staleness is simply never suspected."
           (should (typetopology-search--newest-source-mtime)))
       (delete-directory dir t))))
 
-(ert-deftest tt-search-maybe-prompt-noop-when-disabled ()
-  "`typetopology-search-prompt-to-regenerate' set to nil -- the old,
-fully manual behaviour -- never even asks."
-  (let ((typetopology-search-prompt-to-regenerate nil)
-        (prompted nil))
-    (cl-letf (((symbol-function 'y-or-n-p) (lambda (&rest _) (setq prompted t) t)))
-      (typetopology-search--maybe-prompt-to-regenerate))
-    (should-not prompted)))
+(ert-deftest tt-search-check-staleness-noop-when-disabled ()
+  "`typetopology-search-warn-when-stale' set to nil -- the old, fully
+manual behaviour -- never sets the flag, however stale things stubbornly
+look."
+  (let* ((file (make-temp-file "tt-search-idx" nil ".tsv"))
+         (typetopology-search-file file)
+         (typetopology-search-warn-when-stale nil)
+         (typetopology-search--index-stale nil))
+    (unwind-protect
+        (progn
+          (with-temp-file file (insert "x"))
+          (cl-letf (((symbol-function 'typetopology-search--newest-source-mtime)
+                     (lambda () (current-time))))
+            (typetopology-search--check-staleness))
+          (should-not typetopology-search--index-stale))
+      (delete-file file))))
 
-(ert-deftest tt-search-maybe-prompt-noop-when-not-stale ()
+(ert-deftest tt-search-check-staleness-nil-when-not-stale ()
   "Nothing newer in the source (stubbed nil, as when there is no git
-checkout to compare against) -- no prompt."
+checkout to compare against) -- flag stays nil."
   (let* ((file (make-temp-file "tt-search-idx" nil ".tsv"))
          (typetopology-search-file file)
-         (typetopology-search-generator "/bin/true")
-         (typetopology-search-prompt-to-regenerate t)
-         (typetopology-search--regeneration-declined nil)
-         (prompted nil))
+         (typetopology-search-warn-when-stale t)
+         (typetopology-search--index-stale nil))
     (unwind-protect
         (progn
           (with-temp-file file (insert "x"))
           (cl-letf (((symbol-function 'typetopology-search--newest-source-mtime)
-                     (lambda () nil))
-                    ((symbol-function 'y-or-n-p)
-                     (lambda (&rest _) (setq prompted t) t)))
-            (typetopology-search--maybe-prompt-to-regenerate))
-          (should-not prompted))
+                     (lambda () nil)))
+            (typetopology-search--check-staleness))
+          (should-not typetopology-search--index-stale))
       (delete-file file))))
 
-(ert-deftest tt-search-maybe-prompt-regenerates-on-yes ()
-  "Answering yes rebuilds and reloads the index, the same as
-`typetopology-search-regenerate-index' does by hand."
-  (let* ((dir (make-temp-file "tt-search-gen" t))
-         (typetopology-search-generator (expand-file-name "agda-index.py" dir))
-         (typetopology-search-checkout-root dir)
-         (typetopology-search-file (expand-file-name "Definitions.tsv" dir))
-         (typetopology-search-prompt-to-regenerate t)
-         (typetopology-search--regeneration-declined nil)
-         (typetopology-search--entries nil)
-         (typetopology-search--loaded-mtime nil))
-    (unwind-protect
-        (progn
-          (make-directory (expand-file-name "source" dir))
-          (tt-search--write-fake-generator typetopology-search-generator)
-          (with-temp-file typetopology-search-file (insert "placeholder\n"))
-          (set-file-times typetopology-search-file (time-subtract (current-time) 100))
-          (cl-letf (((symbol-function 'typetopology-search--newest-source-mtime)
-                     (lambda () (current-time)))
-                    ((symbol-function 'y-or-n-p) (lambda (&rest _) t)))
-            (typetopology-search--maybe-prompt-to-regenerate))
-          (should (= (length typetopology-search--entries) 1))
-          (should (equal (typetopology-search-entry-name
-                          (car typetopology-search--entries))
-                         "foo")))
-      (delete-directory dir t))))
-
-(ert-deftest tt-search-maybe-prompt-remembers-decline ()
-  "Answering no once is not asked again for the rest of the session --
-not even for a further edit past the one just declined, since edits
-are constant while writing Agda and re-asking after each one would
-defeat the point of declining."
+(ert-deftest tt-search-check-staleness-sets-flag-when-stale ()
+  "A source newer than the index -- flag becomes non-nil."
   (let* ((file (make-temp-file "tt-search-idx" nil ".tsv"))
          (typetopology-search-file file)
-         (typetopology-search-generator "/bin/true")
-         (typetopology-search-prompt-to-regenerate t)
-         (typetopology-search--regeneration-declined nil)
-         (calls 0)
-         (t1 (current-time))
-         (t2 (time-add (current-time) 5)))
+         (typetopology-search-warn-when-stale t)
+         (typetopology-search--index-stale nil))
     (unwind-protect
         (progn
           (with-temp-file file (insert "x"))
-          (set-file-times file (time-subtract t1 100))
+          (set-file-times file (time-subtract (current-time) 100))
           (cl-letf (((symbol-function 'typetopology-search--newest-source-mtime)
-                     (lambda () t1))
-                    ((symbol-function 'y-or-n-p)
-                     (lambda (&rest _) (cl-incf calls) nil)))
-            (typetopology-search--maybe-prompt-to-regenerate))
-          (cl-letf (((symbol-function 'typetopology-search--newest-source-mtime)
-                     (lambda () t2))
-                    ((symbol-function 'y-or-n-p)
-                     (lambda (&rest _) (cl-incf calls) nil)))
-            (typetopology-search--maybe-prompt-to-regenerate))
-          (should (= calls 1)))
+                     (lambda () (current-time))))
+            (typetopology-search--check-staleness))
+          (should typetopology-search--index-stale))
       (delete-file file))))
 
-(ert-deftest tt-search-regenerate-index-command-clears-declined-flag ()
-  "An explicit `typetopology-search-regenerate-index' lifts a previous
-decline, so a later edit is worth noticing again."
+(ert-deftest tt-search-check-staleness-nil-when-index-newer ()
+  "The index is newer than the source (the ordinary case just after a
+rebuild) -- flag stays nil."
+  (let* ((file (make-temp-file "tt-search-idx" nil ".tsv"))
+         (typetopology-search-file file)
+         (typetopology-search-warn-when-stale t)
+         (typetopology-search--index-stale t))
+    (unwind-protect
+        (progn
+          (with-temp-file file (insert "x"))
+          (cl-letf (((symbol-function 'typetopology-search--newest-source-mtime)
+                     (lambda () (time-subtract (current-time) 100))))
+            (typetopology-search--check-staleness))
+          (should-not typetopology-search--index-stale))
+      (delete-file file))))
+
+(ert-deftest tt-search-update-index-command-clears-stale-flag ()
+  "An explicit `typetopology-search-update-index' clears the flag,
+the same as a fresh build naturally would on the next check."
   (let* ((dir (make-temp-file "tt-search-gen" t))
          (typetopology-search-generator (expand-file-name "agda-index.py" dir))
          (typetopology-search-checkout-root dir)
          (typetopology-search-file (expand-file-name "Definitions.tsv" dir))
          (typetopology-search--entries nil)
          (typetopology-search--loaded-mtime nil)
-         (typetopology-search--regeneration-declined t))
+         (typetopology-search--index-stale t))
     (unwind-protect
         (progn
           (make-directory (expand-file-name "source" dir))
           (tt-search--write-fake-generator typetopology-search-generator)
-          (typetopology-search-regenerate-index)
-          (should-not typetopology-search--regeneration-declined))
+          (typetopology-search-update-index)
+          (should-not typetopology-search--index-stale))
       (delete-directory dir t))))
+
+(ert-deftest tt-search-cleanup-results-kills-buffer ()
+  (get-buffer-create typetopology-search--results-buffer-name)
+  (typetopology-search--cleanup-results)
+  (should-not (get-buffer typetopology-search--results-buffer-name)))
+
+(ert-deftest tt-search-cleanup-results-noop-when-buffer-absent ()
+  (when (get-buffer typetopology-search--results-buffer-name)
+    (kill-buffer typetopology-search--results-buffer-name))
+  (should-not (condition-case err
+                  (progn (typetopology-search--cleanup-results) nil)
+                (error err))))
+
+(ert-deftest tt-search-update-from-search-refreshes-everything ()
+  "`C-c C-u' rebuilds, reloads, clears the stale flag, and refilters
+against the fresh entries -- all without leaving the search."
+  (let* ((dir (make-temp-file "tt-search-gen" t))
+         (typetopology-search-generator (expand-file-name "agda-index.py" dir))
+         (typetopology-search-checkout-root dir)
+         (typetopology-search-file (expand-file-name "Definitions.tsv" dir))
+         (typetopology-search--entries nil)
+         (typetopology-search--loaded-mtime nil)
+         (typetopology-search--index-stale t)
+         (typetopology-search--matches nil)
+         (typetopology-search--selected 5))
+    (unwind-protect
+        (progn
+          (make-directory (expand-file-name "source" dir))
+          (tt-search--write-fake-generator typetopology-search-generator)
+          (cl-letf (((symbol-function 'minibuffer-contents) (lambda () "foo")))
+            (typetopology-search--update-from-search))
+          (should-not typetopology-search--index-stale)
+          (should (= (length typetopology-search--matches) 1))
+          (should (= typetopology-search--selected 0)))
+      (delete-directory dir t)
+      (when (get-buffer typetopology-search--results-buffer-name)
+        (kill-buffer typetopology-search--results-buffer-name)))))
 
 ;; ------------------------------------------------------- action decision
 
@@ -512,6 +528,30 @@ decline, so a later edit is worth noticing again."
                  'jump-to-source))
       (should (eq typetopology-search--last-action 'jump-to-source)))))
 
+(ert-deftest tt-search-choose-action-update-is-not-sticky ()
+  "Updating the index is the one choice on the menu that does not act
+on the entry it was opened for -- so, unlike the other three, it must
+never become what plain RET repeats on some later, unrelated result."
+  (let ((typetopology-search--last-action 'jump-to-source))
+    (cl-letf (((symbol-function 'read-from-minibuffer)
+               (lambda (&rest _)
+                 (setq typetopology-search--action-result
+                       "Update the index"))))
+      (should (eq (typetopology-search--choose-action (tt-search--sample-entry))
+                 'update-index))
+      (should (eq typetopology-search--last-action 'jump-to-source)))))
+
+(ert-deftest tt-search-actions-jump-to-source-first ()
+  "Requested ordering: jump to the definition is the first (hence
+pre-selected) choice on the menu."
+  (should (equal (caar typetopology-search--actions)
+                "Jump to its definition in the source file")))
+
+(ert-deftest tt-search-actions-update-index-last ()
+  "Requested ordering: updating the index is the last choice."
+  (should (equal (cdr (car (last typetopology-search--actions)))
+                'update-index)))
+
 (ert-deftest tt-search-read-candidate-uses-dedicated-history ()
   "Regression test for a real bug hit in use: without an explicit HIST
 argument, a minibuffer read falls back to the shared, global
@@ -542,6 +582,48 @@ for why), not just that some invocation succeeds."
                        "Insert the name at point"))))
       (typetopology-search--choose-action (tt-search--sample-entry))
       (should (eq seen-hist 'typetopology-search--action-history)))))
+
+(ert-deftest tt-search-read-candidate-installs-transient-map ()
+  "Regression test for a real bug hit in use: an ordinary local keymap
+(the old `use-local-map'/`make-composed-keymap' approach) sits below
+ANY active minor mode's own keymap in Emacs's own keymap lookup order
+(see *note Active Keymaps:: in the Elisp manual) -- so a minor mode
+that happens to also bind the same key (an Agda-related one binding
+`C-c C-r', in real use) always won regardless of composition order.
+`set-transient-map' installs via `overriding-terminal-local-map',
+which outranks minor modes too. Confirms the actual keymap
+`set-transient-map' is called with, and that the exit function it
+returns is invoked once the read finishes -- by having the stubbed
+`read-from-minibuffer' run the setup hook itself, the same way a real
+minibuffer read would, before returning."
+  (let (seen-map exited)
+    (cl-letf (((symbol-function 'set-transient-map)
+               (lambda (map _pred &rest _)
+                 (setq seen-map map)
+                 (lambda () (setq exited t))))
+              ((symbol-function 'read-from-minibuffer)
+               (lambda (&rest _) (run-hooks 'minibuffer-setup-hook) "")))
+      (typetopology-search--read-candidate)
+      (should (eq seen-map typetopology-search--minibuffer-map))
+      (should exited))))
+
+(ert-deftest tt-search-choose-action-installs-transient-map ()
+  "Same fix, same reason, for the action menu's own keymap -- see
+`typetopology-search--read-candidate' and
+`typetopology-search--read-candidate-installs-transient-map'."
+  (let (seen-map exited)
+    (cl-letf (((symbol-function 'set-transient-map)
+               (lambda (map _pred &rest _)
+                 (setq seen-map map)
+                 (lambda () (setq exited t))))
+              ((symbol-function 'read-from-minibuffer)
+               (lambda (&rest _)
+                 (run-hooks 'minibuffer-setup-hook)
+                 (setq typetopology-search--action-result
+                       "Insert the name at point"))))
+      (typetopology-search--choose-action (tt-search--sample-entry))
+      (should (eq seen-map typetopology-search--action-minibuffer-map))
+      (should exited))))
 
 (ert-deftest tt-search-no-default-completions-sets-local-nil ()
   (with-temp-buffer
@@ -642,6 +724,17 @@ being dropped into the middle of an existing line."
                    :name "X" :dispmod "M" :importmod "M" :file ""
                    :line 1 :uses 0 :sig "" :assumes ""))
     (should (equal (buffer-string) "before X after"))))
+
+(ert-deftest tt-search-perform-update-index-ignores-entry ()
+  "Updating the index does not act on the entry at all -- confirms
+the actual dispatch (`typetopology-search-update-index' is called),
+not just that no error is signalled, and that the entry argument is
+truly unused (a nonsense one is passed on purpose)."
+  (let ((called 0))
+    (cl-letf (((symbol-function 'typetopology-search-update-index)
+               (lambda () (cl-incf called))))
+      (typetopology-search--perform 'update-index nil)
+      (should (= called 1)))))
 
 (ert-deftest tt-search-jump-to-source ()
   (let* ((dir (make-temp-file "tt-search-src" t))
@@ -1024,6 +1117,41 @@ decides."
           (should (string-match-p "No matches" (buffer-string)))))
     (when (get-buffer typetopology-search--results-buffer-name)
       (kill-buffer typetopology-search--results-buffer-name))))
+
+(ert-deftest tt-search-render-shows-bold-reminder-when-stale ()
+  "Shown together with the results, in the same buffer, in `bold' --
+two earlier attempts at showing this elsewhere (a header-line, a
+mode-line, a second child frame) each turned out either too easy to
+miss or unreliable in real use; see `typetopology-search--render'."
+  (let ((typetopology-search--index-stale t))
+    (unwind-protect
+        (let ((buf (typetopology-search--render "q" nil 0)))
+          (with-current-buffer buf
+            (should (string-match-p "C-c C-u" (buffer-string)))
+            (should (eq (get-text-property (point-min) 'face) 'bold))))
+      (when (get-buffer typetopology-search--results-buffer-name)
+        (kill-buffer typetopology-search--results-buffer-name)))))
+
+(ert-deftest tt-search-render-no-reminder-when-not-stale ()
+  (let ((typetopology-search--index-stale nil))
+    (unwind-protect
+        (let ((buf (typetopology-search--render "q" nil 0)))
+          (with-current-buffer buf
+            (should-not (string-match-p "C-c C-u" (buffer-string)))))
+      (when (get-buffer typetopology-search--results-buffer-name)
+        (kill-buffer typetopology-search--results-buffer-name)))))
+
+(ert-deftest tt-search-render-no-reminder-in-action-menu ()
+  "QUERY nil means the action menu, not the main search -- no reminder
+there even if the index is stale, since there is nothing to search and
+`C-c C-u' does not apply."
+  (let ((typetopology-search--index-stale t))
+    (unwind-protect
+        (let ((buf (typetopology-search--render nil (list "x") 0 #'identity)))
+          (with-current-buffer buf
+            (should-not (string-match-p "C-c C-u" (buffer-string)))))
+      (when (get-buffer typetopology-search--results-buffer-name)
+        (kill-buffer typetopology-search--results-buffer-name)))))
 
 (ert-deftest tt-search-render-caps-shown-and-notes-more ()
   "35 matches, 30 shown (`typetopology-search--max-shown'), the rest

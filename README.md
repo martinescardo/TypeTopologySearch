@@ -25,7 +25,7 @@ page](https://martinescardo.github.io/TypeTopologySearch.html) and an
     1. [Generating the search page and index](#generating-the-search-page-and-index)
     1. [The generated index files](#the-generated-index-files)
     1. [Finding agda-index.py](#finding-agda-indexpy)
-    1. [Regenerating the index](#regenerating-the-index)
+    1. [Updating the index](#updating-the-index)
     1. [The concept vocabulary](#the-concept-vocabulary)
     1. [The Unicode escape table](#the-unicode-escape-table)
     1. [How the search is implemented](#how-the-search-is-implemented)
@@ -63,8 +63,8 @@ needs no arguments.
     (setq typetopology-search-checkout-root "/path/to/TypeTopology")
     (require 'typetopology-search)
 
-Make sure you have clones of this repository and TypeTopology, and point
-`typetopology-search-checkout-root` at the TypeTopology directory before
+Make sure you have clones of this repository and `TypeTopology`, and point
+`typetopology-search-checkout-root` at the `TypeTopology` directory before
 requiring the file. The command `typetopology-search`
 builds its own index the first time it is used. See
 [The Emacs command in detail](#in-detail) for how this
@@ -105,7 +105,9 @@ asking the first time. TAB always asks. See
 
 Plain RET repeats whatever action was chosen last, except the very
 first time in a session, when a menu offers the choices. TAB always
-opens the action menu for the currently selected result.
+opens the action menu for the currently selected result. The menu's
+last choice, updating the index, is not about the result at all, and
+so never becomes what plain RET repeats afterward.
 
 <sub>[Table of contents](#table-of-contents)</sub>
 
@@ -114,9 +116,7 @@ opens the action menu for the currently selected result.
 Several words take the intersection of the results, case-insensitively,
 against a substring of a definition's name, type signature or module.
 `*` stands for any run of characters and `?` for one, and `\*` for a
-literal star, since `*` occurs in names such as `ℤ*-assoc`, the same
-wildcard syntax the [browser-based
-search](#what-you-can-search-for-in-the-search-page) uses.
+literal star, since `*` occurs in names such as `ℤ*-assoc`.
 
 <sub>[Table of contents](#table-of-contents)</sub>
 
@@ -125,7 +125,7 @@ search](#what-you-can-search-for-in-the-search-page) uses.
 Requiring `typetopology-search.el` also defines `typetopology-mode`, a
 minor mode that attaches itself to every agda2-mode buffer automatically,
 via `agda2-mode-hook`, and binds `C-c C-g` there to the search command.
-On first use, this command builds a TypeTopology index if it isn't
+On first use, this command builds a `TypeTopology` index if it isn't
 already built.
 
 `typetopology-search` looks a name or a piece of a type signature up
@@ -142,21 +142,15 @@ exact name match, then a name starting with a word, then a word starting
 a hyphenated part of the name, then anywhere else in the name, then a
 word found only in the signature or module, ties broken by use count.
 
-Before any of that, though, a result sinks for the area it lives in.
-Everything in `Unsafe` comes last of all, since what it defines relies
-on principles the rest of the library does without, everything in
-`deprecated` just above it, since a superseded definition is never the
-one being looked for, and everything in `MGS` above that, since those
-lecture notes redevelop from scratch names the library already has, so
-an unqualified search for one of them means the library's own. Every
-other directory shares the top rank and is ordered by relevance alone.
-This outranks relevance itself: an exact name match in `Unsafe` or
-`deprecated` still comes after a mere substring match in a live
-module. Searching `in Unsafe`, `in deprecated` or `in MGS` explicitly
-is unaffected, since the demotion is then uniform.
-
-This is the identical ranking the browser search uses, so the two never
-disagree about which result comes first.
+Everything in `Unsafe` comes last of all, everything in `deprecated`
+comes just above it, and everything in `MGS` comes above that, since
+those lecture note files redevelop from scratch names the library
+already has, so an unqualified search for one of them means the
+library's own. Every other directory shares the top rank and is
+ordered by relevance alone.  This outranks relevance itself: an exact
+name match in `Unsafe` or `deprecated` still comes after a mere
+substring match in a live module. Searching `in Unsafe`, `in
+deprecated` or `in MGS` explicitly is unaffected.
 
 Up and down arrows move a highlighted selection over that list.  Each
 result shows an "(assumes: ...)" clause, an enclosing-module
@@ -192,7 +186,7 @@ piling one up per keystroke, so the back button has nothing to undo.
 ### What you can search for in the search page
 
 * **Definitions.** We index every publicly visible name in the
-  TypeTopology repository, including records, datatypes, fields and
+  `TypeTopology` repository, including records, datatypes, fields and
   constructors. Each links to where it is defined in the rendered
   Agda, and, when it has one, shows its type too, so most of the time
   you can tell whether a hit is the one you want without leaving the
@@ -213,7 +207,7 @@ piling one up per keystroke, so the back button has nothing to undo.
   manually. These play the role of the concepts listed in a
   mathematical textbook index.
 
-* **Contributors.** We list the people of TypeTopology's own top-level
+* **Contributors.** We list the people of `TypeTopology`'s own top-level
   `README.md`, with the modules that name them.
 
 Several words all have to match, so `compact ordinal` asks to match
@@ -307,19 +301,17 @@ file. Useful options:
 
 ### The generated index files
 
-`Definitions.txt` is for grep rather than browsing. There is no HTML,
-no pagination, everything on one line, namely a name, its signature
-where one could be read off the rendering, the module and use count it
-was found with, and any hypothesis, such as `fe : funext 𝓤 𝓥` or a
-whole record's worth of structure, taken by an enclosing module rather
-than repeated in the signature itself, since that never shows up any
-other way. We sort it by name, so several definitions sharing one name
-sit together. It serves the same purpose the search page does, aimed
-instead at a terminal and a text editor, for looking up an exact name
-and type before writing code against it, or for checking whether
-TypeTopology already has what is needed rather than reproving it.
-Regenerate it before relying on it. Like everything else here, it is
-not kept up to date automatically.
+`Definitions.txt` is for `grep` rather than browsing. There is no
+HTML, no pagination. Each line has a name, its signature, the module
+and use count it was found with, and any hypothesis, such as `fe :
+funext 𝓤 𝓥` or a whole record's worth of structure, taken by an
+enclosing module. We sort it by name, so several definitions sharing
+one name sit together. It serves the same purpose the search page
+does, aimed instead at a terminal and a text editor, for looking up an
+exact name and type before writing code against it, or for checking
+whether `TypeTopology` already has what is needed rather than
+reproving it.  Regenerate it before relying on it. Like everything
+else here, it is not kept up to date automatically.
 
 `Definitions.tsv` serves the same purpose again, this time for a program
 rather than a person, namely one definition per line, the same fields as
@@ -347,24 +339,29 @@ both work.
 
 <sub>[Table of contents](#table-of-contents)</sub>
 
-### Regenerating the index
+### Updating the index
 
 `typetopology-search-warn-when-stale`, on by default, notices whenever
-the source has a definition newer than the index and shows a dimmed
-reminder in the results window -- search still works regardless, just
-possibly missing recent definitions. Press `C-c C-r` during the search
-to rebuild it right there, or run `M-x
-typetopology-search-regenerate-index` at any other time. Set the
+the source has a definition newer than the index and shows a bold
+reminder right alongside the results -- search still works regardless,
+just possibly missing recent definitions. Press `C-c C-u` during the
+search to update it right there, or run `M-x
+typetopology-search-update-index` at any other time. Set the
 variable to nil to turn off the check and the reminder.
+
+The index cannot be updated when there are holes or files that don't
+type check, because the option `--allow-unsolved-metas` is
+incompatible with `--safe`, which is used by the vast majority of the
+`TypeTopology` files.
 
 <sub>[Table of contents](#table-of-contents)</sub>
 
 ### The concept vocabulary
 
-Append a line to `concepts.tsv`, which has five tab-separated columns,
-namely the concept, a pattern for finding it in the commentary, a
+To add a new concept, append a line to `concepts.tsv`. Each row has five tab-separated
+columns: the concept, a pattern for finding it in the commentary, a
 pattern for finding the definitions that carry its name, the few
-definitions that *are* the concept, shown first and in bold, and an
+definitions that *are* the concept (shown first and in bold), and an
 optional search alias.
 
     injective type <TAB> injectiv <TAB> ainjectiv|... <TAB> ainjective-type, injective-type <TAB>
@@ -384,15 +381,16 @@ since a name that seems obvious is often not the one the library uses.
 
 ### The Unicode escape table
 
-`agda-input-escapes.json` powers the `\to`/`\MCU` typing
-described above. It is the emacs Agda input method's key table, dumped
-from a running Emacs rather than hand-copied, since large parts of it,
-accented Latin letters, and every spelled-out Greek letter such as
-`\Sigma`, alongside the terser `\GS` form Agda's own file defines
-directly, only exist once Emacs's own Quail machinery has resolved them
-at load time, not as literal text anywhere in Agda's own `agda-input.el`.
-To regenerate it, also runnable as `make agda-input-dump` (see [Other
-Makefile targets](#other-makefile-targets)):
+`agda-input-escapes.json` powers the unicode typing described
+above. It is the emacs Agda input method's key table, dumped from a
+running Emacs rather than hand-copied. That is because large parts of
+it -- accented Latin letters, and every spelled-out Greek letter such
+as `\Sigma`, alongside the terser `\GS` form Agda's own file defines
+directly -- only exist once Emacs's own Quail machinery has resolved
+them at load time, not as literal text anywhere in Agda's own
+`agda-input.el`.  To regenerate it, also runnable as `make
+agda-input-dump` (see [Other Makefile
+targets](#other-makefile-targets)):
 
     ./generate-agda-input-dump
 
@@ -403,11 +401,11 @@ when both are in the current directory. The dump has one key per line,
 single Unicode codepoint, a literal character, or a bracketed
 space-separated list of either when a key has several candidates. From
 there we strip the backslash, decode each numeric candidate to its
-character, drop any candidate that is itself plain ASCII, offered by
-Quail as a do-nothing choice, such as `\eq`'s first candidate being a
-bare `=`, and keep the first surviving candidate as the key's value,
-or the whole list when more than one survives, so that the search
-page's own digit-selection can reach the rest.
+character, and drop any candidate that is itself plain ASCII, offered
+by Quail as a do-nothing choice, such as `\eq`'s first candidate being
+a bare `=`. We then keep the first surviving candidate as the key's
+value, or the whole list when more than one survives, so that the
+search page's own digit-selection can reach the rest.
 
 <sub>[Table of contents](#table-of-contents)</sub>
 
