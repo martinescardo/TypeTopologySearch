@@ -450,6 +450,38 @@ def people_of(readme, body):
     return out
 
 
+def concepts_of(table, body):
+    """Each concept's label and the modules whose commentary discusses
+    it, matched by its own prose pattern alone -- never its alias, for
+    the same reason `write_search_page' never lets alias feed this scan
+    either: an alias such as "choice" is ordinary English and would
+    flood this with unrelated modules. [] when TABLE (concepts.tsv)
+    does not exist, rather than an error, since concepts are optional
+    for the Emacs bootstrap the way contributors are not -- that
+    bootstrap already needs the README for nothing else, but concepts
+    additionally need concepts.tsv, which it is documented to run
+    without.
+
+    Deliberately a second, small pass over concepts.tsv rather than a
+    shared refactor of write_search_page's own per-concept loop
+    (landmarks, the search-box alias, axiom badges, and more all live
+    there too) -- keeping this self-contained means dropping it later,
+    if it turns out to make Emacs's own filtering noticeably slower on
+    a real concept list, only touches this function and its one caller,
+    never that already-tuned, more heavily-relied-upon code path.
+    """
+    if not os.path.exists(table):
+        return []
+    out = []
+    for line in open(table, encoding="utf-8"):
+        if line.startswith("#") or not line.strip():
+            continue
+        c, pp = (line.rstrip("\n").split("\t") + ["", "", "", ""])[:2]
+        rx = prose_rx(pp)
+        out.append((c, sorted(m for m, t in body.items() if rx.search(t))))
+    return out
+
+
 def prose_rx(pattern):
     "A concept's prose pattern, made blind to hyphenation and word joining."
     # The whitespace matters as much as the hyphen: the commentary is hard
@@ -613,7 +645,7 @@ def write_defs_index(rows, out):
         "\n".join(header + lines) + "\n")
 
 
-def write_emacs_index(rows, out, sourcedir, people):
+def write_emacs_index(rows, out, sourcedir, people, concepts):
     # A tab-separated sibling of Definitions.txt, for a program to read
     # rather than a person -- the emacs-mode search in this directory,
     # typetopology-search.el, though nothing here is specific to it.
@@ -626,14 +658,15 @@ def write_emacs_index(rows, out, sourcedir, people):
     # carries, are what a jump-to-source action needs; module and
     # signature alone were enough for grep.
     #
-    # Contributors (from the same README-derived list the search page
-    # shows) are rows here too, told apart by the trailing "kind" column
-    # ("def" or "person") -- a person has no module, file, line or
+    # Contributors and concepts (from the same README-derived list and
+    # concepts.tsv the search page shows) are rows here too, told apart
+    # by the trailing "kind" column ("def", "person", or "concept") --
+    # neither a person nor a concept has a module, file, line, or
     # signature of their own, so those columns are simply empty; the use
-    # count column is repurposed to hold how many modules name them, and
-    # the assumes column to hold which ones, semicolon-separated (a
-    # module's dotted name never contains one), since neither row kind
-    # needs both meanings of either column at once.
+    # count column is repurposed to hold how many modules mention them,
+    # and the assumes column to hold which ones, semicolon-separated (a
+    # module's dotted name never contains one), since none of the three
+    # row kinds needs both meanings of either column at once.
     src_of = {}
     def source_file(mod):
         if mod not in src_of:
@@ -654,24 +687,28 @@ def write_emacs_index(rows, out, sourcedir, people):
     for name, mods in people:
         entries.append((name, [name, "", "", "", "0", str(len(mods)),
                                 "", ";".join(mods), "person"]))
+    for name, mods in concepts:
+        entries.append((name, [name, "", "", "", "0", str(len(mods)),
+                                "", ";".join(mods), "concept"]))
     entries.sort(key=lambda e: sortkey(e[0]))
     lines = ["\t".join(fields) for _, fields in entries]
-    header = ["# TypeTopology definitions and contributors index for "
-              "programs, tab-separated. Columns: name, module (with any",
-              "# inner submodule), module alone (what \"open import\" "
-              "wants), source file relative to the source directory,",
-              "# source line, use count (a contributor's: how many "
-              "modules name them), signature where known, any hypothesis",
-              "# taken by an enclosing module (a contributor's: which "
-              "modules name them, semicolon-separated instead), and kind",
-              "# (\"def\" or \"person\" -- a person has no module, file, "
-              "line or signature).",
+    header = ["# TypeTopology definitions, contributors, and concepts "
+              "index for programs, tab-separated. Columns: name, module",
+              "# (with any inner submodule), module alone (what \"open "
+              "import\" wants), source file relative to the source",
+              "# directory, source line, use count (a contributor's or "
+              "concept's: how many modules mention them), signature",
+              "# where known, any hypothesis taken by an enclosing "
+              "module (a contributor's or concept's: which modules",
+              "# mention them, semicolon-separated instead), and kind "
+              "(\"def\", \"person\", or \"concept\" -- neither a person",
+              "# nor a concept has a module, file, line, or signature).",
               "# Every line below is data, none of them this header -- a "
               "reader just drops lines starting with \"#\"",
               f"# and splits the rest on tabs. {len(rows)} definitions, "
-              f"{len(people)} contributors. Regenerated by",
-              "# 'agda-index.py --emacs-index'; not kept automatically "
-              "in sync, so re-run first."]
+              f"{len(people)} contributors, {len(concepts)} concepts.",
+              "# Regenerated by 'agda-index.py --emacs-index'; not kept "
+              "automatically in sync, so re-run first."]
     text = "\n".join(header + lines) + "\n"
     path = f"{out}/Definitions.tsv"
     if os.path.exists(path) and open(path, encoding="utf-8").read() == text:
@@ -1473,6 +1510,12 @@ def main():
         write_concept_index(rows, a.out, a.site, a.concepts, body)
     people = (people_of(a.readme, body) if (not a.no_html or a.emacs_index)
               and os.path.exists(a.readme) else [])
+    # concepts_of degrades to [] by itself when concepts.tsv is missing, the
+    # same as people above does for a missing README -- concepts stay
+    # optional for the emacs-index-only bootstrap this way, matching
+    # --no-html's own documented "concepts.tsv ... not needed" (see the
+    # --no-html help text above and README.md).
+    concepts = concepts_of(a.concepts, body) if (not a.no_html or a.emacs_index) else []
     if not a.no_html:
         write_search_page(rows, a.out, a.site, a.concepts, body, people,
                           unsafe_modules(a.source), a.escapes, htmldir)
@@ -1481,10 +1524,10 @@ def main():
     if a.defs_index:
         write_defs_index(rows, a.out)
     if a.emacs_index:
-        write_emacs_index(rows, a.out, a.source, people)
+        write_emacs_index(rows, a.out, a.source, people, concepts)
     print(f"{len(rows)} definitions, {len({r['name'] for r in rows})} names, "
           f"{len({r['module'] for r in rows})} of {len(body)} modules, "
-          f"{len(people)} contributors -> {a.out}")
+          f"{len(people)} contributors, {len(concepts)} concepts -> {a.out}")
     # A half-emptied html directory indexes quietly and looks fine until the
     # counts are read closely, so say so here.
     pages = len(glob.glob(f"{htmldir}/*.html"))

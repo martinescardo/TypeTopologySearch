@@ -1,33 +1,33 @@
 # TODO
 
-* **Concept search in the Emacs command.** Add concepts as a third
-  `typetopology-search-entry` kind, alongside `def` and `person`, with
-  the same treatment contributors got: matched by name, and the action
-  menu offering "jump to a module mentioning it" (reusing
-  `typetopology-search--jump-to-mention` as is, since a concept's data
-  -- name plus discussing modules -- has the same shape as a
-  contributor's).
+* ~~Concept search in the Emacs command.~~ **DONE 2026-08-01.** Concepts
+  are a third `typetopology-search-entry` kind, alongside `def` and
+  `person`, with the same treatment contributors got: matched by label
+  text only (not their prose pattern or search alias the way the
+  browser page also matches them -- deliberately the simpler of the two
+  options this TODO left open, to keep the feature small and easy to
+  remove), and the action menu offering "jump to a module mentioning
+  it" (reusing `typetopology-search--jump-to-mention` unchanged, since
+  a concept's data -- label plus discussing modules -- has the same
+  shape as a contributor's). `concepts.tsv` stays optional for the
+  Emacs bootstrap: `agda-index.py`'s `concepts_of()` degrades to `[]`
+  when the file does not exist, the same as `people_of()` already does
+  for a missing README.
 
-  Two things to decide first, discussed 2026-08-01 and deliberately
-  deferred rather than decided:
+  Built specifically so it can be dropped cheaply if it ever turns out
+  to slow filtering down on a real concept list: set
+  `typetopology-search-include-concepts` to nil and reload -- concept
+  lines are then simply never turned into entries at load time, no
+  regeneration or code revert needed. Measured directly (A/B, real
+  data, several representative queries): concept entries make no
+  measurable difference to filtering time either way.
 
-  1. Match by label text only (simple, matches the contributor
-     precedent exactly), or also by the concept's prose pattern/alias
-     the way the browser page does (e.g. typing "searchable" finds
-     "compactness")? Label-only is a real, noticeable step down from
-     the browser page's own matching.
-  2. `concepts.tsv` is currently optional for the Emacs bootstrap
-     (`--no-html --emacs-index` needs neither `concepts.tsv` nor
-     `agda-input-escapes.json` at all, and this is documented and
-     tested). Adding concepts to `Definitions.tsv` should degrade
-     gracefully -- skip concepts silently when the file is not there --
-     rather than making it newly required.
-
-  Smaller, lower-risk items to check while building this: the
-  per-concept "which modules discuss this" scan currently only runs
-  when building the browser page (`not --no-html`); running it for
-  `--emacs-index` too adds some unmeasured cost (likely modest, since
-  the expensive prose-extraction step already runs unconditionally).
-  Concepts.tsv's "landmark" definitions (names that *are* the concept,
-  with real file/line) are a separate richer feature the browser page
-  also has -- out of scope here unless asked for.
+* **Pre-existing bug found while verifying the above, not fixed:** the
+  identifier `#-` (`PathSequences.Split.lagda:173`, a real definition,
+  `#- = drop-from-end`) is silently dropped by both
+  `typetopology-search.el`'s and (very likely) the browser page's own
+  "lines starting with # are a comment" convention, since a definition
+  row can legitimately start with a literal `#`. Affects exactly this
+  one identifier out of 21,332, as far as checked. Not a regression
+  from any of the above -- the convention itself predates concepts and
+  contributors alike.

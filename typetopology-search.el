@@ -110,27 +110,47 @@ explicit `typetopology-search-update-index' or `C-c C-u'."
   :type 'boolean
   :group 'typetopology-search)
 
+(defcustom typetopology-search-include-concepts t
+  "Whether concept entries (see `typetopology-search-entry-kind') are
+kept when `typetopology-search-file' is loaded. Concepts are matched by
+label only, the same as a contributor is matched by name -- not by
+their prose pattern or search alias the way the browser search page's
+own concept matching also is -- so this could in principle turn out to
+add enough entries to make filtering noticeably slower on a real
+checkout's full concept list (as of this writing, ~237 of them).
+
+Set to nil to drop concept entries at load time, with no need to
+regenerate `typetopology-search-file' or revert any code, if that turns
+out to be the case: the change takes effect on the next load (a fresh
+`typetopology-search--ensure-loaded' or `typetopology-search-update-index'
+call, or restarting Emacs), since entries already loaded are not
+retroactively dropped."
+  :type 'boolean
+  :group 'typetopology-search)
+
 ;; ------------------------------------------------------------- data
 
 (cl-defstruct (typetopology-search-entry
                (:constructor typetopology-search-entry-create))
-  "One row of Definitions.tsv -- either a definition (KIND `def', the
-default) or a contributor (KIND `person'), told apart by Definitions.tsv's
-own trailing column. A person entry has no DISPMOD, IMPORTMOD, FILE, or
-SIG of their own -- all \"\" -- USES holds how many modules name them,
-not a use count, and ASSUMES holds which ones, semicolon-separated,
-instead of an enclosing-module hypothesis."
-  name        ; bare identifier, or a contributor's name
+  "One row of Definitions.tsv -- a definition (KIND `def', the default),
+a contributor (KIND `person'), or a concept (KIND `concept'), told
+apart by Definitions.tsv's own trailing column. Neither a person nor a
+concept has a DISPMOD, IMPORTMOD, FILE, or SIG of their own -- all
+\"\" -- USES holds how many modules mention them, not a use count, and
+ASSUMES holds which ones, semicolon-separated, instead of an
+enclosing-module hypothesis."
+  name        ; bare identifier, a contributor's name, or a concept's label
   dispmod     ; module, with any inner submodule, for display
   importmod   ; module alone, what `open import' wants
   file        ; source file, relative to the TypeTopology source directory
   line        ; source line, 1-indexed
-  uses        ; use count, an integer -- or, for a person, module count
+  uses        ; use count, an integer -- or, for a person/concept, module count
   sig         ; signature, or ""
-  assumes     ; enclosing-module hypotheses, or "" -- or, for a person,
-              ; the modules naming them, semicolon-separated
-  (kind 'def) ; `def' or `person' -- defaults to `def' so code and tests
-              ; built before this distinction existed still work unchanged
+  assumes     ; enclosing-module hypotheses, or "" -- or, for a
+              ; person/concept, the modules mentioning them, semicolon-separated
+  (kind 'def) ; `def', `person', or `concept' -- defaults to `def' so code
+              ; and tests built before this distinction existed still work
+              ; unchanged
   dtext)      ; lower-cased display text, cached -- see `typetopology-search--dtext'
 
 (defvar typetopology-search--entries nil
@@ -146,27 +166,40 @@ newer than `typetopology-search-file' -- read by
 results, rather than blocking search the way earlier versions of this
 file did.")
 
+(defconst typetopology-search--mention-phrase
+  '((person . "named in") (concept . "discussed in"))
+  "The phrase `typetopology-search--display' and
+`typetopology-search--display-propertized' use before the module count
+for a non-definition entry, by KIND (see
+`typetopology-search-entry-kind') -- \"named in\" for a contributor,
+matching the browser page's own wording for its \"named in\" list;
+\"discussed in\" for a concept, matching that page's \"discussed in\"
+list.")
+
 (defun typetopology-search--display (e)
-  "The candidate text shown for entry E. For a contributor (see
-`typetopology-search-entry-kind'), just their name and how many modules
-name them. Otherwise mirrors Definitions.txt's own one-line-per-definition
-shape -- including, the same as there, a trailing \"(assumes: ...)\"
-clause for any hypothesis (`funext', a whole record's worth of
-structure, ...) taken once by an enclosing module rather than repeated
-in E's own signature, which otherwise never shows up anywhere at all."
-  (if (eq (typetopology-search-entry-kind e) 'person)
-      (format "%s  (named in %d modules)"
-              (typetopology-search-entry-name e)
-              (typetopology-search-entry-uses e))
-    (concat (typetopology-search-entry-name e)
-            (unless (string-empty-p (typetopology-search-entry-sig e))
-              (concat " : " (typetopology-search-entry-sig e)))
-            "  [" (typetopology-search-entry-dispmod e)
-            (unless (zerop (typetopology-search-entry-uses e))
-              (format ", %d uses" (typetopology-search-entry-uses e)))
-            "]"
-            (unless (string-empty-p (typetopology-search-entry-assumes e))
-              (concat "  (assumes: " (typetopology-search-entry-assumes e) ")")))))
+  "The candidate text shown for entry E. For a contributor or a concept
+(see `typetopology-search-entry-kind'), just their name/label and how
+many modules mention them. Otherwise mirrors Definitions.txt's own
+one-line-per-definition shape -- including, the same as there, a
+trailing \"(assumes: ...)\" clause for any hypothesis (`funext', a
+whole record's worth of structure, ...) taken once by an enclosing
+module rather than repeated in E's own signature, which otherwise
+never shows up anywhere at all."
+  (let ((phrase (cdr (assq (typetopology-search-entry-kind e)
+                           typetopology-search--mention-phrase))))
+    (if phrase
+        (format "%s  (%s %d modules)"
+                (typetopology-search-entry-name e) phrase
+                (typetopology-search-entry-uses e))
+      (concat (typetopology-search-entry-name e)
+              (unless (string-empty-p (typetopology-search-entry-sig e))
+                (concat " : " (typetopology-search-entry-sig e)))
+              "  [" (typetopology-search-entry-dispmod e)
+              (unless (zerop (typetopology-search-entry-uses e))
+                (format ", %d uses" (typetopology-search-entry-uses e)))
+              "]"
+              (unless (string-empty-p (typetopology-search-entry-assumes e))
+                (concat "  (assumes: " (typetopology-search-entry-assumes e) ")"))))))
 
 (defun typetopology-search--display-propertized (e)
   "Like `typetopology-search--display', but with faces applied so a
@@ -174,14 +207,17 @@ result is easy to pick out at a glance rather than lost among a page
 of type signatures: the name in `bold', everything else -- signature,
 module, use count, and any assumption clause -- in `shadow', the
 standard Emacs face for de-emphasised text, and the word \"assumes\"
-itself in `italic' on top of that. A contributor's \"(named in ...)\"
-clause is `shadow' too, with no `italic' word of its own. Query-match
-highlighting is a separate step, in `typetopology-search--render',
-since it depends on what was actually typed, not on the entry alone."
-  (let ((name (propertize (typetopology-search-entry-name e) 'face 'bold)))
-    (if (eq (typetopology-search-entry-kind e) 'person)
-        (concat name (propertize (format "  (named in %d modules)"
-                                         (typetopology-search-entry-uses e))
+itself in `italic' on top of that. A contributor's or concept's
+\"(named/discussed in ...)\" clause is `shadow' too, with no `italic'
+word of its own. Query-match highlighting is a separate step, in
+`typetopology-search--render', since it depends on what was actually
+typed, not on the entry alone."
+  (let ((name (propertize (typetopology-search-entry-name e) 'face 'bold))
+        (phrase (cdr (assq (typetopology-search-entry-kind e)
+                           typetopology-search--mention-phrase))))
+    (if phrase
+        (concat name (propertize (format "  (%s %d modules)"
+                                         phrase (typetopology-search-entry-uses e))
                                   'face 'shadow))
       (let* ((sig (typetopology-search-entry-sig e))
              (assumes (typetopology-search-entry-assumes e))
@@ -202,27 +238,31 @@ since it depends on what was actually typed, not on the entry alone."
 
 (defun typetopology-search--parse-line (line)
   "One Definitions.tsv line -> an entry, or nil for a malformed line (left
-lenient on purpose, so one bad line does not take the whole index down).
-The trailing kind column (\"def\" or \"person\") is itself optional here,
-defaulting to `def', so an index built before contributors were added
-still parses exactly as before."
+lenient on purpose, so one bad line does not take the whole index down),
+or for a concept line when `typetopology-search-include-concepts' is
+nil (see there) -- the cheapest possible removal, done right here at
+load time rather than filtered out again on every keystroke afterward.
+The trailing kind column (\"def\", \"person\", or \"concept\") is itself
+optional here, defaulting to `def', so an index built before
+contributors or concepts were added still parses exactly as before."
   (let ((f (split-string line "\t" nil)))
     (when (>= (length f) 8)
-      (let ((e (typetopology-search-entry-create
-               :name (nth 0 f) :dispmod (nth 1 f) :importmod (nth 2 f)
-               :file (nth 3 f) :line (string-to-number (nth 4 f))
-               :uses (string-to-number (nth 5 f))
-               :sig (nth 6 f) :assumes (nth 7 f)
-               :kind (if (>= (length f) 9) (intern (nth 8 f)) 'def))))
-        ;; Computed once here rather than on every keystroke: filtering
-        ;; 21,000 entries means building and lower-casing this string
-        ;; 21,000 times per character typed, which measured at ~130ms --
-        ;; noticeable on every keystroke. Paying that cost once at load
-        ;; time instead (the whole file already takes a fraction of a
-        ;; second to parse) is a straightforward trade.
-        (setf (typetopology-search-entry-dtext e)
-              (downcase (typetopology-search--display e)))
-        e))))
+      (let ((kind (if (>= (length f) 9) (intern (nth 8 f)) 'def)))
+        (unless (and (eq kind 'concept) (not typetopology-search-include-concepts))
+          (let ((e (typetopology-search-entry-create
+                   :name (nth 0 f) :dispmod (nth 1 f) :importmod (nth 2 f)
+                   :file (nth 3 f) :line (string-to-number (nth 4 f))
+                   :uses (string-to-number (nth 5 f))
+                   :sig (nth 6 f) :assumes (nth 7 f) :kind kind)))
+            ;; Computed once here rather than on every keystroke: filtering
+            ;; 21,000 entries means building and lower-casing this string
+            ;; 21,000 times per character typed, which measured at ~130ms --
+            ;; noticeable on every keystroke. Paying that cost once at load
+            ;; time instead (the whole file already takes a fraction of a
+            ;; second to parse) is a straightforward trade.
+            (setf (typetopology-search-entry-dtext e)
+                  (downcase (typetopology-search--display e)))
+            e))))))
 
 (defun typetopology-search--load (file)
   "Parse FILE into `typetopology-search--entries'."
@@ -401,21 +441,22 @@ default plain RET repeats, unlike the others.")
 
 (defconst typetopology-search--contributor-actions
   '(jump-to-mention update-index)
-  "Which of `typetopology-search--actions' a contributor offers -- see
-`typetopology-search--actions-for'. Inserting their name at point,
-this file's very first idea for a contributor result, does not belong
-here: nobody wants that: what a contributor result is actually for is
-finding one of the modules that names them and jumping there.")
+  "Which of `typetopology-search--actions' a contributor or a concept
+offers -- see `typetopology-search--actions-for'. Inserting their name
+at point, this file's very first idea for a contributor result, does
+not belong here: nobody wants that: what a contributor or concept
+result is actually for is finding one of the modules that mentions it
+and jumping there.")
 
 (defun typetopology-search--actions-for (entry)
   "The subset of `typetopology-search--actions', in order, that ENTRY
 actually offers on the menu -- `typetopology-search--definition-actions'
 for a definition, `typetopology-search--contributor-actions' for a
-contributor (see `typetopology-search-entry-kind'): a contributor has
-no source file or module of their own to jump to directly or open an
+contributor or a concept (see `typetopology-search-entry-kind'): neither
+has a source file or module of their own to jump to directly or open an
 import for, only modules that mention them, reached instead via
 `jump-to-mention' (see `typetopology-search--jump-to-mention')."
-  (let ((wanted (if (eq (typetopology-search-entry-kind entry) 'person)
+  (let ((wanted (if (memq (typetopology-search-entry-kind entry) '(person concept))
                     typetopology-search--contributor-actions
                   typetopology-search--definition-actions)))
     (cl-remove-if-not (lambda (a) (memq (cdr a) wanted))
@@ -643,9 +684,9 @@ An empty query matches nothing: there is no value in a wall of all
 A query ending in \" in PATH\" (see `typetopology-search--split-in-scope')
 additionally requires the entry's own module to lie within PATH (see
 `typetopology-search--in-scope-p') -- PATH itself plays no part in the
-term matching above, only KEYWORDS does. A contributor entry has no
-module of its own, so it never survives an \" in PATH\" query at all;
-only definitions are scoped this way for now."
+term matching above, only KEYWORDS does. A contributor or concept entry
+has no module of its own, so neither ever survives an \" in PATH\" query
+at all; only definitions are scoped this way for now."
   (if (string-blank-p query)
       nil
     (pcase-let ((`(,keywords . ,path) (typetopology-search--split-in-scope query)))
@@ -1014,9 +1055,10 @@ which has no separate meaning here.")
   "Read one of ITEMS (plain strings) with PROMPT, via the same
 fixed-list arrow-key picker the action menu uses --
 `typetopology-search--choose-action' and
-`typetopology-search--jump-to-mention' (a contributor's own list of
-mentioning modules) share this one implementation rather than each
-keeping its own copy of the minibuffer/transient-map/cleanup dance.
+`typetopology-search--jump-to-mention' (a contributor's or concept's
+own list of mentioning modules) share this one implementation rather
+than each keeping its own copy of the minibuffer/transient-map/cleanup
+dance.
 Returns the chosen item, or nil if ITEMS is empty."
   (when items
     (let (exit-transient-map)
@@ -1133,21 +1175,22 @@ no precomputed FILE column to reuse for them the way a definition has."
     (cond ((file-exists-p lagda) lagda)
           ((file-exists-p agda) agda))))
 
-(defun typetopology-search--jump-to-mention (person)
-  "Prompt for one of PERSON's mentioning modules (see
-`typetopology-search-entry-assumes', repurposed for a contributor to
-hold a semicolon-separated list of dotted module names instead of an
-enclosing-module hypothesis) and jump to its source file, at the very
+(defun typetopology-search--jump-to-mention (entry)
+  "Prompt for one of ENTRY's mentioning modules (a contributor or a
+concept, see `typetopology-search-entry-kind') via
+`typetopology-search-entry-assumes', repurposed there to hold a
+semicolon-separated list of dotted module names instead of an
+enclosing-module hypothesis, and jump to its source file, at the very
 top -- unlike `typetopology-search--jump-to-source', there is no one
-specific definition to put point at, only the module PERSON is named
-somewhere in the commentary of."
-  (let ((modules (split-string (typetopology-search-entry-assumes person) ";" t)))
+specific definition to put point at, only the module ENTRY is
+mentioned somewhere in the commentary of."
+  (let ((modules (split-string (typetopology-search-entry-assumes entry) ";" t)))
     (unless modules
       (user-error "No modules recorded for %s"
-                  (typetopology-search-entry-name person)))
+                  (typetopology-search-entry-name entry)))
     (let* ((mod (typetopology-search--pick-from-list
                 (format "%s -- jump to which module? "
-                        (typetopology-search-entry-name person))
+                        (typetopology-search-entry-name entry))
                 modules))
            (path (and mod (typetopology-search--module-path mod))))
       (unless path
@@ -1180,8 +1223,9 @@ ignores E entirely, since it does not act on any particular entry."
 
 ;;;###autoload
 (defun typetopology-search ()
-  "Search TypeTopology's ~21,000 definitions, and its contributors, by
-name or type fragment, and act on the one you pick.
+  "Search TypeTopology's ~21,000 definitions, its contributors, and its
+concepts (see `typetopology-search-include-concepts'), by name/label
+or type fragment, and act on the one you pick.
 
 Plain RET repeats whatever action you last chose (or, the very first
 time this is used in a session, opens a menu to choose one, so all are
@@ -1195,10 +1239,11 @@ insert the matched name at point; insert \"open import Module\" for
 it; or update the index (see `typetopology-search-update-index') --
 the odd one out, since it does not act on the entry the menu was
 opened for at all, and so never becomes what RET repeats afterward. A
-contributor, matched by name, has no source file or module of their
-own to jump to or open an import for directly -- instead, jump to one
-of the modules that mentions them, picked from a second list, or
-update the index (see `typetopology-search--actions-for').
+contributor or a concept, matched by name/label alone, has no source
+file or module of their own to jump to or open an import for directly
+-- instead, jump to one of the modules that mentions them, picked from
+a second list, or update the index (see
+`typetopology-search--actions-for').
 
 This searches the whole library regardless of what the current buffer
 has imported -- for a live, exactly-normalised type of something

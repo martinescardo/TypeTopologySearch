@@ -37,6 +37,11 @@ oddly."
    :name "Escardo" :dispmod "" :importmod "" :file "" :line 0 :uses 507
    :sig "" :assumes "M.A;M.B" :kind 'person))
 
+(defun tt-search--sample-concept-entry ()
+  (tt-search--make-entry
+   :name "compactness" :dispmod "" :importmod "" :file "" :line 0 :uses 42
+   :sig "" :assumes "M.A;M.B" :kind 'concept))
+
 ;; ------------------------------------------------------------- parsing
 
 (ert-deftest tt-search-parse-line-full ()
@@ -100,6 +105,38 @@ still parses, as a definition, exactly as before."
     (should e)
     (should (eq (typetopology-search-entry-kind e) 'def))))
 
+(ert-deftest tt-search-parse-line-concept ()
+  "A concept row: no module, file, signature of its own, USES
+repurposed to hold how many modules discuss it, and ASSUMES to hold
+which ones."
+  (let ((typetopology-search-include-concepts t))
+    (let ((e (typetopology-search--parse-line
+              (string-join '("compactness" "" "" "" "0" "42" "" "M.A;M.B" "concept")
+                          "\t"))))
+      (should e)
+      (should (equal (typetopology-search-entry-name e) "compactness"))
+      (should (= (typetopology-search-entry-uses e) 42))
+      (should (equal (typetopology-search-entry-assumes e) "M.A;M.B"))
+      (should (eq (typetopology-search-entry-kind e) 'concept)))))
+
+(ert-deftest tt-search-parse-line-concept-dropped-when-disabled ()
+  "The cheapest possible removal if concepts turn out to make filtering
+too slow: flip `typetopology-search-include-concepts' to nil, no need
+to regenerate the index or revert any code -- concept lines are then
+simply never turned into entries at load time."
+  (let ((typetopology-search-include-concepts nil))
+    (should (null (typetopology-search--parse-line
+                  (string-join '("compactness" "" "" "" "0" "42" "" "M.A;M.B" "concept")
+                              "\t"))))))
+
+(ert-deftest tt-search-parse-line-def-unaffected-by-include-concepts-nil ()
+  "Disabling concepts must not drop definitions or contributors too."
+  (let ((typetopology-search-include-concepts nil))
+    (should (typetopology-search--parse-line
+            (string-join '("flabby" "M" "M" "x.lagda" "1" "0" "" "" "def") "\t")))
+    (should (typetopology-search--parse-line
+            (string-join '("Escardo" "" "" "" "0" "507" "" "" "person") "\t")))))
+
 ;; ------------------------------------------------------------- display
 
 (ert-deftest tt-search-display-with-sig-and-uses ()
@@ -151,6 +188,23 @@ word inside it (unlike a definition's own assumes clause)."
          (s (typetopology-search--display-propertized e)))
     (should (eq (get-text-property 0 'face s) 'bold))
     (should (eq (get-text-property (length "Escardo") 'face s) 'shadow))
+    (should (equal (substring-no-properties s) (typetopology-search--display e)))))
+
+(ert-deftest tt-search-display-concept ()
+  "A concept displays as its label and how many modules discuss it --
+\"discussed in\", not \"named in\", to match the browser page's own
+wording for the two different lists."
+  (let ((e (typetopology-search-entry-create
+            :name "compactness" :dispmod "" :importmod "" :file "" :line 0
+            :uses 42 :sig "" :assumes "" :kind 'concept)))
+    (should (equal (typetopology-search--display e)
+                   "compactness  (discussed in 42 modules)"))))
+
+(ert-deftest tt-search-display-propertized-concept-name-bold ()
+  (let* ((e (tt-search--sample-concept-entry))
+         (s (typetopology-search--display-propertized e)))
+    (should (eq (get-text-property 0 'face s) 'bold))
+    (should (eq (get-text-property (length "compactness") 'face s) 'shadow))
     (should (equal (substring-no-properties s) (typetopology-search--display e)))))
 
 ;; ------------------------------------------------------------- loading
@@ -628,6 +682,10 @@ via \"jump to a module mentioning them\", plus updating the index."
                                 (tt-search--sample-person-entry)))
                 '(jump-to-mention update-index))))
 
+(ert-deftest tt-search-actions-for-concept-same-as-contributor ()
+  (should (equal (typetopology-search--actions-for (tt-search--sample-concept-entry))
+                (typetopology-search--actions-for (tt-search--sample-person-entry)))))
+
 (ert-deftest tt-search-read-candidate-uses-dedicated-history ()
   "Regression test for a real bug hit in use: without an explicit HIST
 argument, a minibuffer read falls back to the shared, global
@@ -932,6 +990,25 @@ still works, with no error and no attempt to call it."
       (ignore-errors (kill-buffer "B.lagda"))
       (delete-directory dir t))))
 
+(ert-deftest tt-search-jump-to-mention-works-for-concepts-too ()
+  "`jump-to-mention' is entirely kind-agnostic: it only reads NAME and
+ASSUMES, so a concept entry works exactly like a contributor's."
+  (let* ((dir (make-temp-file "tt-search-src" t))
+         (typetopology-search-checkout-root dir))
+    (unwind-protect
+        (progn
+          (make-directory (expand-file-name "source/M" dir) t)
+          (with-temp-file (expand-file-name "source/M/A.lagda" dir) (insert "x\n"))
+          (cl-letf (((symbol-function 'typetopology-search--pick-from-list)
+                     (lambda (_prompt items) (should (equal items '("M.A"))) "M.A")))
+            (typetopology-search--jump-to-mention
+             (typetopology-search-entry-create
+              :name "compactness" :dispmod "" :importmod "" :file "" :line 0
+              :uses 1 :sig "" :assumes "M.A" :kind 'concept)))
+          (should (equal (buffer-name) "A.lagda")))
+      (ignore-errors (kill-buffer "A.lagda"))
+      (delete-directory dir t))))
+
 (ert-deftest tt-search-jump-to-mention-no-modules-errors-cleanly ()
   (should-error
    (typetopology-search--jump-to-mention
@@ -996,7 +1073,15 @@ by hand against the raw HTML earlier in this project (cale-lo-lemma's
       (should (> (length people) 0))
       (should (cl-some (lambda (e) (equal (typetopology-search-entry-name e)
                                           "Martin Escardo"))
-                       people)))))
+                       people)))
+    (when typetopology-search-include-concepts
+      (let ((concepts (cl-remove-if-not
+                       (lambda (e) (eq (typetopology-search-entry-kind e) 'concept))
+                       typetopology-search--entries)))
+        (should (> (length concepts) 0))
+        (should (cl-some (lambda (e) (equal (typetopology-search-entry-name e)
+                                            "compactness"))
+                         concepts))))))
 
 ;; --------------------------------------------------------- end to end
 
@@ -1180,6 +1265,15 @@ never matches one, even when their name matches the keyword part."
     (should (equal (mapcar #'typetopology-search-entry-name
                           (typetopology-search--filter "escardo in NotionsOfDecidability"))
                   '("Escardo-Knapp-Choice")))))
+
+(ert-deftest tt-search-filter-in-path-excludes-concepts ()
+  "A concept has no module of its own either, for the same reason."
+  (let ((typetopology-search--entries
+         (list (tt-search--sample-concept-entry)
+               (tt-search--entry-in "compactness-lemma" "Ordinals.Compactness"))))
+    (should (equal (mapcar #'typetopology-search-entry-name
+                          (typetopology-search--filter "compact in Ordinals"))
+                  '("compactness-lemma")))))
 
 (ert-deftest tt-search-render-highlights-keywords-not-in-or-path ()
   "The \" in PATH\" suffix must not itself become a highlight term --
