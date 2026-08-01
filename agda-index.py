@@ -5,7 +5,7 @@ Usage:
 
     agda-index.py --typetopology /path/to/TypeTopology
 
-It runs agda --html itself, into a temporary directory, and skips doing so
+It runs agda --html itself, into <typetopology>/html, and skips doing so
 when that rendering is newer than every source file. The index is written
 beside this script. To index a rendering you already have, and never invoke
 agda, pass it:
@@ -42,7 +42,7 @@ notions rather than variables.
 """
 
 import argparse, bisect, collections, datetime, glob, html, json, os, re
-import subprocess, tempfile, unicodedata
+import subprocess, unicodedata
 
 KIND = r"(Function|Datatype|Record|Postulate|Primitive|Field|Module|Macro|" \
        r"InductiveConstructor)( Operator)?"
@@ -1382,11 +1382,13 @@ def main():
     # siblings) actually live.
     here = os.path.dirname(os.path.realpath(__file__))
     p = argparse.ArgumentParser(description=__doc__.split("\n")[0])
-    # The rendering is 118 MB and is not worth keeping, let alone committing,
-    # so it goes to a temporary directory, kept between runs only so that an
-    # unchanged repository need not be rendered again.
+    # The rendering is 118 MB and is not worth committing, so it goes to
+    # <typetopology>/html rather than beside this script -- already
+    # gitignored there (html/*, in TypeTopology's own .gitignore) -- and
+    # kept between runs, rather than a temporary directory that would lose
+    # it and force a full re-render (a minute or so) the next time round.
     p.add_argument("--html", help="an existing html rendering; the default is to "
-                                  "run agda into a temporary directory")
+                                  "run agda into <typetopology>/html")
     p.add_argument("--typetopology", default=os.path.dirname(here),
                    help="a TypeTopology checkout -- its own source/ "
                         "directory and top-level README.md are found under "
@@ -1441,7 +1443,7 @@ def main():
             f"{a.entry} not found under --source {a.source!r} -- this "
             "does not look like a TypeTopology source directory.")
     os.makedirs(a.out, exist_ok=True)
-    htmldir = a.html or os.path.join(tempfile.gettempdir(), "typetopology-html")
+    htmldir = a.html or os.path.join(a.typetopology, "html")
     if not a.html:
         os.makedirs(htmldir, exist_ok=True)
         render(a.source, a.entry, htmldir, a.agda)

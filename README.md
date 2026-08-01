@@ -284,7 +284,7 @@ cover.
 When running the script `agda-index.py`, the option `--typetopology
 <path/to/TypeTopology>` must be given.
 
-The script runs `agda --html`, into a temporary directory, and skips
+The script runs `agda --html`, into `<typetopology>/html`, and skips
 doing so when that rendering is already newer than every source
 file. Useful options:
 
