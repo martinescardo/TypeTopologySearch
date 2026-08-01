@@ -1341,7 +1341,7 @@ def render(source, entry, htmldir, agda):
     if pages and min(os.path.getmtime(p) for p in pages) > newest:
         print(f"{len(pages)} html pages in {htmldir} are up to date")
         return
-    print(f"{agda} --html --html-dir={htmldir} {entry}   (a minute or so cold)")
+    print(f"{agda} --html --html-dir={htmldir} {entry}   (this may take a while)")
     try:
         proc = subprocess.Popen([agda, "--html", f"--html-dir={htmldir}", entry],
                                 cwd=source, stdout=subprocess.PIPE,
