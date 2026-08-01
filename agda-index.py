@@ -817,6 +817,8 @@ SEARCH_TEMPLATE = r"""<!DOCTYPE html>
     <code>\to</code> and <code>\MCU</code> are "→" and "𝓤",
     though <code>\to</code> itself needs a space right after it, since
     <code>\top</code> could still follow.</li>
+<li>Once a search term is typed, <b>↑/↓</b> move a selection
+    through the results, and Enter opens it.</li>
 </ul>
 <p class="sub">%(ndefs)s definitions and %(ncons)s concepts in %(ntotal)s modules.</p>
 <p id="browse-label" class="sub">Concept index</p>
