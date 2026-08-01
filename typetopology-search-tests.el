@@ -32,6 +32,11 @@ oddly."
    :name "flabby" :dispmod "M" :importmod "M" :file "" :line 1 :uses 0
    :sig "" :assumes ""))
 
+(defun tt-search--sample-person-entry ()
+  (tt-search--make-entry
+   :name "Escardo" :dispmod "" :importmod "" :file "" :line 0 :uses 507
+   :sig "" :assumes "" :kind 'person))
+
 ;; ------------------------------------------------------------- parsing
 
 (ert-deftest tt-search-parse-line-full ()
@@ -71,6 +76,30 @@ oddly."
   (should (null (typetopology-search--parse-line "just\ttwo")))
   (should (null (typetopology-search--parse-line ""))))
 
+(ert-deftest tt-search-parse-line-person ()
+  "A contributor row: no module, file, signature, or assumes of its
+own, and USES repurposed to hold how many modules name them."
+  (let ((e (typetopology-search--parse-line
+            (string-join '("Escardo" "" "" "" "0" "507" "" "" "person") "\t"))))
+    (should e)
+    (should (equal (typetopology-search-entry-name e) "Escardo"))
+    (should (= (typetopology-search-entry-uses e) 507))
+    (should (eq (typetopology-search-entry-kind e) 'person))))
+
+(ert-deftest tt-search-parse-line-def-kind-explicit ()
+  (let ((e (typetopology-search--parse-line
+            (string-join '("flabby" "M" "M" "x.lagda" "1" "0" "" "" "def") "\t"))))
+    (should e)
+    (should (eq (typetopology-search-entry-kind e) 'def))))
+
+(ert-deftest tt-search-parse-line-defaults-to-def-without-kind-column ()
+  "An index built before contributors were added has only 8 columns --
+still parses, as a definition, exactly as before."
+  (let ((e (typetopology-search--parse-line
+            (string-join '("flabby" "M" "M" "x.lagda" "1" "0" "" "") "\t"))))
+    (should e)
+    (should (eq (typetopology-search-entry-kind e) 'def))))
+
 ;; ------------------------------------------------------------- display
 
 (ert-deftest tt-search-display-with-sig-and-uses ()
@@ -103,6 +132,26 @@ true here: it never shows up any other way."
     (should (equal (typetopology-search--display e)
                    "homotopy-id-sys : Id-Sys 𝓤 (A → B) f  [M, 2 uses]  \
 (assumes: (fe : funext 𝓤 𝓥) {A : 𝓤 ̇ } {B : 𝓥 ̇ } (f : A → B))"))))
+
+(ert-deftest tt-search-display-contributor ()
+  "A contributor displays as just their name and how many modules name
+them -- no signature, no module brackets, no assumes clause, none of
+which a person entry has."
+  (let ((e (typetopology-search-entry-create
+            :name "Escardo" :dispmod "" :importmod "" :file "" :line 0
+            :uses 507 :sig "" :assumes "" :kind 'person)))
+    (should (equal (typetopology-search--display e)
+                   "Escardo  (named in 507 modules)"))))
+
+(ert-deftest tt-search-display-propertized-contributor-name-bold ()
+  "The propertized form bolds a contributor's name the same as a
+definition's, and puts \"(named in ...)\" in `shadow', with no italic
+word inside it (unlike a definition's own assumes clause)."
+  (let* ((e (tt-search--sample-person-entry))
+         (s (typetopology-search--display-propertized e)))
+    (should (eq (get-text-property 0 'face s) 'bold))
+    (should (eq (get-text-property (length "Escardo") 'face s) 'shadow))
+    (should (equal (substring-no-properties s) (typetopology-search--display e)))))
 
 ;; ------------------------------------------------------------- loading
 
@@ -506,6 +555,19 @@ against the fresh entries -- all without leaving the search."
                   (tt-search--sample-entry) nil)
                  'jump-to-source)))))
 
+(ert-deftest tt-search-decide-action-menus-when-sticky-action-does-not-apply ()
+  "The sticky default from a definition (jump to source) does not apply
+to a contributor picked right afterward -- the menu must fire instead
+of silently repeating an action the new entry cannot perform."
+  (let ((typetopology-search--last-action 'jump-to-source))
+    (cl-letf (((symbol-function 'typetopology-search--choose-action)
+               (lambda (_entry &optional first-time)
+                 (should (eq first-time nil))
+                 'insert-name)))
+      (should (eq (typetopology-search--decide-action
+                  (tt-search--sample-person-entry) nil)
+                 'insert-name)))))
+
 (ert-deftest tt-search-decide-action-tab-always-menus ()
   (let ((typetopology-search--last-action 'insert-name)
         (calls 0))
@@ -551,6 +613,17 @@ pre-selected) choice on the menu."
   "Requested ordering: updating the index is the last choice."
   (should (equal (cdr (car (last typetopology-search--actions)))
                 'update-index)))
+
+(ert-deftest tt-search-actions-for-definition-offers-all-four ()
+  (should (equal (typetopology-search--actions-for (tt-search--sample-entry))
+                typetopology-search--actions)))
+
+(ert-deftest tt-search-actions-for-contributor-offers-only-insert-and-update ()
+  "A contributor has no source file or module of its own, so \"jump to
+source\" and \"insert open import\" are left off its own menu."
+  (should (equal (mapcar #'cdr (typetopology-search--actions-for
+                                (tt-search--sample-person-entry)))
+                '(insert-name update-index))))
 
 (ert-deftest tt-search-read-candidate-uses-dedicated-history ()
   "Regression test for a real bug hit in use: without an explicit HIST
@@ -844,7 +917,14 @@ by hand against the raw HTML earlier in this project (cale-lo-lemma's
     (let ((flabby (cl-remove-if-not
                    (lambda (e) (equal (typetopology-search-entry-name e) "flabby"))
                    typetopology-search--entries)))
-      (should (>= (length flabby) 1)))))
+      (should (>= (length flabby) 1)))
+    (let ((people (cl-remove-if-not
+                   (lambda (e) (eq (typetopology-search-entry-kind e) 'person))
+                   typetopology-search--entries)))
+      (should (> (length people) 0))
+      (should (cl-some (lambda (e) (equal (typetopology-search-entry-name e)
+                                          "Martin Escardo"))
+                       people)))))
 
 ;; --------------------------------------------------------- end to end
 

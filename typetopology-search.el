@@ -114,15 +114,21 @@ explicit `typetopology-search-update-index' or `C-c C-u'."
 
 (cl-defstruct (typetopology-search-entry
                (:constructor typetopology-search-entry-create))
-  "One row of Definitions.tsv."
-  name        ; bare identifier
+  "One row of Definitions.tsv -- either a definition (KIND `def', the
+default) or a contributor (KIND `person'), told apart by Definitions.tsv's
+own trailing column. A person entry has no DISPMOD, IMPORTMOD, FILE,
+SIG, or ASSUMES of its own -- all \"\" -- and USES holds how many
+modules name them, not a use count."
+  name        ; bare identifier, or a contributor's name
   dispmod     ; module, with any inner submodule, for display
   importmod   ; module alone, what `open import' wants
   file        ; source file, relative to the TypeTopology source directory
   line        ; source line, 1-indexed
-  uses        ; use count, an integer
+  uses        ; use count, an integer -- or, for a person, module count
   sig         ; signature, or ""
   assumes     ; enclosing-module hypotheses, or ""
+  (kind 'def) ; `def' or `person' -- defaults to `def' so code and tests
+              ; built before this distinction existed still work unchanged
   dtext)      ; lower-cased display text, cached -- see `typetopology-search--dtext'
 
 (defvar typetopology-search--entries nil
@@ -139,21 +145,26 @@ results, rather than blocking search the way earlier versions of this
 file did.")
 
 (defun typetopology-search--display (e)
-  "The candidate text shown for entry E, mirroring Definitions.txt's own
-one-line-per-definition shape -- including, the same as there, a
-trailing \"(assumes: ...)\" clause for any hypothesis (`funext', a
-whole record's worth of structure, ...) taken once by an enclosing
-module rather than repeated in E's own signature, which otherwise
-never shows up anywhere at all."
-  (concat (typetopology-search-entry-name e)
-          (unless (string-empty-p (typetopology-search-entry-sig e))
-            (concat " : " (typetopology-search-entry-sig e)))
-          "  [" (typetopology-search-entry-dispmod e)
-          (unless (zerop (typetopology-search-entry-uses e))
-            (format ", %d uses" (typetopology-search-entry-uses e)))
-          "]"
-          (unless (string-empty-p (typetopology-search-entry-assumes e))
-            (concat "  (assumes: " (typetopology-search-entry-assumes e) ")"))))
+  "The candidate text shown for entry E. For a contributor (see
+`typetopology-search-entry-kind'), just their name and how many modules
+name them. Otherwise mirrors Definitions.txt's own one-line-per-definition
+shape -- including, the same as there, a trailing \"(assumes: ...)\"
+clause for any hypothesis (`funext', a whole record's worth of
+structure, ...) taken once by an enclosing module rather than repeated
+in E's own signature, which otherwise never shows up anywhere at all."
+  (if (eq (typetopology-search-entry-kind e) 'person)
+      (format "%s  (named in %d modules)"
+              (typetopology-search-entry-name e)
+              (typetopology-search-entry-uses e))
+    (concat (typetopology-search-entry-name e)
+            (unless (string-empty-p (typetopology-search-entry-sig e))
+              (concat " : " (typetopology-search-entry-sig e)))
+            "  [" (typetopology-search-entry-dispmod e)
+            (unless (zerop (typetopology-search-entry-uses e))
+              (format ", %d uses" (typetopology-search-entry-uses e)))
+            "]"
+            (unless (string-empty-p (typetopology-search-entry-assumes e))
+              (concat "  (assumes: " (typetopology-search-entry-assumes e) ")")))))
 
 (defun typetopology-search--display-propertized (e)
   "Like `typetopology-search--display', but with faces applied so a
@@ -161,37 +172,46 @@ result is easy to pick out at a glance rather than lost among a page
 of type signatures: the name in `bold', everything else -- signature,
 module, use count, and any assumption clause -- in `shadow', the
 standard Emacs face for de-emphasised text, and the word \"assumes\"
-itself in `italic' on top of that. Query-match highlighting is a
-separate step, in `typetopology-search--render', since it depends on
-what was actually typed, not on the entry alone."
-  (let* ((name (typetopology-search-entry-name e))
-         (sig (typetopology-search-entry-sig e))
-         (assumes (typetopology-search-entry-assumes e))
-         (rest (concat
-                (unless (string-empty-p sig) (concat " : " sig))
-                "  [" (typetopology-search-entry-dispmod e)
-                (unless (zerop (typetopology-search-entry-uses e))
-                  (format ", %d uses" (typetopology-search-entry-uses e)))
-                "]"
-                (unless (string-empty-p assumes)
-                  (concat "  (assumes: " assumes ")"))))
-         (rest (propertize rest 'face 'shadow)))
-    (unless (string-empty-p assumes)
-      (let ((pos (string-match-p (regexp-quote "(assumes: ") rest)))
-        (when pos
-          (add-face-text-property (1+ pos) (+ pos 8) 'italic nil rest))))
-    (concat (propertize name 'face 'bold) rest)))
+itself in `italic' on top of that. A contributor's \"(named in ...)\"
+clause is `shadow' too, with no `italic' word of its own. Query-match
+highlighting is a separate step, in `typetopology-search--render',
+since it depends on what was actually typed, not on the entry alone."
+  (let ((name (propertize (typetopology-search-entry-name e) 'face 'bold)))
+    (if (eq (typetopology-search-entry-kind e) 'person)
+        (concat name (propertize (format "  (named in %d modules)"
+                                         (typetopology-search-entry-uses e))
+                                  'face 'shadow))
+      (let* ((sig (typetopology-search-entry-sig e))
+             (assumes (typetopology-search-entry-assumes e))
+             (rest (concat
+                    (unless (string-empty-p sig) (concat " : " sig))
+                    "  [" (typetopology-search-entry-dispmod e)
+                    (unless (zerop (typetopology-search-entry-uses e))
+                      (format ", %d uses" (typetopology-search-entry-uses e)))
+                    "]"
+                    (unless (string-empty-p assumes)
+                      (concat "  (assumes: " assumes ")"))))
+             (rest (propertize rest 'face 'shadow)))
+        (unless (string-empty-p assumes)
+          (let ((pos (string-match-p (regexp-quote "(assumes: ") rest)))
+            (when pos
+              (add-face-text-property (1+ pos) (+ pos 8) 'italic nil rest))))
+        (concat name rest)))))
 
 (defun typetopology-search--parse-line (line)
   "One Definitions.tsv line -> an entry, or nil for a malformed line (left
-lenient on purpose, so one bad line does not take the whole index down)."
+lenient on purpose, so one bad line does not take the whole index down).
+The trailing kind column (\"def\" or \"person\") is itself optional here,
+defaulting to `def', so an index built before contributors were added
+still parses exactly as before."
   (let ((f (split-string line "\t" nil)))
     (when (>= (length f) 8)
       (let ((e (typetopology-search-entry-create
                :name (nth 0 f) :dispmod (nth 1 f) :importmod (nth 2 f)
                :file (nth 3 f) :line (string-to-number (nth 4 f))
                :uses (string-to-number (nth 5 f))
-               :sig (nth 6 f) :assumes (nth 7 f))))
+               :sig (nth 6 f) :assumes (nth 7 f)
+               :kind (if (>= (length f) 9) (intern (nth 8 f)) 'def))))
         ;; Computed once here rather than on every keystroke: filtering
         ;; 21,000 entries means building and lower-casing this string
         ;; 21,000 times per character typed, which measured at ~130ms --
@@ -360,13 +380,27 @@ agda-index.py --emacs-index, or set typetopology-search-file"
     ("Insert the name at point"                      . insert-name)
     ("Insert \"open import Module\" for its module"   . insert-import)
     ("Update the index"                              . update-index))
-  "What a result can be turned into, in the order offered on the menu.
+  "Every action this file knows, and the label used for each -- the
+canonical name/label mapping `typetopology-search--action-label' and
+`typetopology-search--perform' use, regardless of which of these a
+given entry actually offers (see `typetopology-search--actions-for').
 The labels are shown as-is in the action menu, so they are written to
 stand alone without needing a separate description column. The last
-entry, updating the index, is unlike the other three: it does not act
+entry, updating the index, is unlike the rest: it does not act
 on the entry the menu was opened for at all, and -- see
 `typetopology-search--choose-action' -- never becomes the sticky
-default plain RET repeats, unlike the other three.")
+default plain RET repeats, unlike the others.")
+
+(defun typetopology-search--actions-for (entry)
+  "The subset of `typetopology-search--actions', in order, that ENTRY
+actually offers on the menu. A definition offers all four. A
+contributor (see `typetopology-search-entry-kind') has no source file
+and no module of its own to open an import for, so only \"insert the
+name\" and \"update the index\" apply."
+  (if (eq (typetopology-search-entry-kind entry) 'person)
+      (list (assoc "Insert the name at point" typetopology-search--actions)
+            (assoc "Update the index" typetopology-search--actions))
+    typetopology-search--actions))
 
 (defvar typetopology-search--last-action nil
   "The action last chosen from the menu, this Emacs session -- nil means
@@ -890,8 +924,9 @@ the literal typed string, and nothing is typed here at all.")
 
 (defun typetopology-search--action-confirm ()
   "RET on the action menu: like `typetopology-search--confirm', but
-there is always exactly one thing selected here (a fixed three-item
-list), so no \"nothing selected yet\" case to handle."
+there is always exactly one thing selected here (a fixed list, see
+`typetopology-search--actions-for'), so no \"nothing selected yet\"
+case to handle."
   (interactive)
   (let ((label (nth typetopology-search--selected typetopology-search--matches)))
     (setq typetopology-search--action-result label)
@@ -935,7 +970,7 @@ default from now on, except updating the index; TAB re-opens this \
 menu later): "
                            "Choose an action (becomes the new default, except \
 updating the index): ")))
-         (labels (mapcar #'car typetopology-search--actions))
+         (labels (mapcar #'car (typetopology-search--actions-for entry)))
          exit-transient-map)
     (setq typetopology-search--action-result nil)
     (unwind-protect
@@ -963,11 +998,16 @@ updating the index): ")))
 
 (defun typetopology-search--decide-action (entry via-tab)
   "Which action to perform, given whether TAB (rather than RET) ended the
-read: the menu wins if TAB asked for it explicitly, or if none has ever
-been chosen yet this session; otherwise the last one sticks. ENTRY is
-passed through to `typetopology-search--choose-action', to show in the
-menu's own prompt when it does run."
-  (if (or via-tab (null typetopology-search--last-action))
+read: the menu wins if TAB asked for it explicitly, if none has ever
+been chosen yet this session, or if the sticky default from a previous,
+differently-kinded entry does not even apply to ENTRY (a contributor
+picked right after \"jump to source\" was last chosen for a definition,
+say) -- otherwise the last one sticks. ENTRY is passed through to
+`typetopology-search--choose-action', to show in the menu's own prompt
+when it does run."
+  (if (or via-tab (null typetopology-search--last-action)
+         (not (memq typetopology-search--last-action
+                    (mapcar #'cdr (typetopology-search--actions-for entry)))))
       (typetopology-search--choose-action entry (null typetopology-search--last-action))
     typetopology-search--last-action))
 
@@ -1015,8 +1055,8 @@ ignores E entirely, since it does not act on any particular entry."
 
 ;;;###autoload
 (defun typetopology-search ()
-  "Search TypeTopology's ~21,000 definitions by name or type fragment,
-and act on the one you pick.
+  "Search TypeTopology's ~21,000 definitions, and its contributors, by
+name or type fragment, and act on the one you pick.
 
 Plain RET repeats whatever action you last chose (or, the very first
 time this is used in a session, opens a menu to choose one, so all are
@@ -1025,11 +1065,14 @@ exactly, opens that same menu on demand without changing what RET
 repeats afterward -- unless you pick something different from it, in
 which case that becomes the new default.
 
-The choices are: jump to its definition in the source; insert the
-matched name at point; insert \"open import Module\" for it; or
-update the index (see `typetopology-search-update-index') -- the odd
-one out, since it does not act on the entry the menu was opened for at
-all, and so never becomes what RET repeats afterward.
+The choices, for a definition: jump to its definition in the source;
+insert the matched name at point; insert \"open import Module\" for
+it; or update the index (see `typetopology-search-update-index') --
+the odd one out, since it does not act on the entry the menu was
+opened for at all, and so never becomes what RET repeats afterward. A
+contributor, matched by name, has no source file or module of their
+own to offer either of the first two, so only inserting their name and
+updating the index apply (see `typetopology-search--actions-for').
 
 This searches the whole library regardless of what the current buffer
 has imported -- for a live, exactly-normalised type of something
