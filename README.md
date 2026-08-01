@@ -33,6 +33,10 @@ page](https://martinescardo.github.io/TypeTopologySearch.html) and an
 
 ## Installing the Emacs command
 
+Clone this repository first:
+
+    git clone https://github.com/martinescardo/TypeTopologySearch.git
+
 ### Using the Makefile
 
 To install the Emacs command after cloning this repository, run
