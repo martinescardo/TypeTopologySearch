@@ -121,6 +121,10 @@ opens the action menu for the currently selected result. The menu's
 last choice, updating the index, is not about the result at all, and
 so never becomes what plain RET repeats afterward.
 
+A contributor or a concept has only one action, jumping to a module
+that mentions it, so both RET and TAB go straight there with no menu
+step at all.
+
 <sub>[Table of contents](#table-of-contents)</sub>
 
 ### What you can search for in Emacs
@@ -129,6 +133,16 @@ Several words take the intersection of the results, case-insensitively,
 against a substring of a definition's name, type signature or module.
 `*` stands for any run of characters and `?` for one, and `\*` for a
 literal star, since `*` occurs in names such as `ℤ*-assoc`.
+
+The same three kinds of entries as the [search
+page](#what-you-can-search-for-in-the-search-page) -- definitions,
+concepts, and contributors -- are searched together here too, and a
+word followed by `in` followed by another word restricts the search to
+one directory or file the same way. The one difference: only a
+definition's own module is scoped this way in Emacs. A contributor or
+concept has no source file of its own, so neither ever survives an
+`in` query here, unlike on the search page, where a concept's or
+contributor's mentioning modules count for `in` too.
 
 <sub>[Table of contents](#table-of-contents)</sub>
 
