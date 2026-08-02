@@ -808,6 +808,8 @@ SEARCH_TEMPLATE = r"""<!DOCTYPE html>
 <ul class="sub">
 <li>Type a <b>name</b>, a <b>fragment</b> of one, a <b>concept</b>, or a
     <b>contributor</b>.</li>
+<li>Once a search term is entered, <b>↑/↓</b> move a selection
+    through the results, and Enter opens it.</li>
 <li><b>Several words</b> must all match, so "compact ordinal" asks for both.</li>
 <li><b>Wildcards</b>: <code>*</code> for any run of characters, <code>?</code> for one,
     <code>\*</code> for a literal star.</li>
@@ -817,8 +819,8 @@ SEARCH_TEMPLATE = r"""<!DOCTYPE html>
     <code>\to</code> and <code>\MCU</code> are "→" and "𝓤",
     though <code>\to</code> itself needs a space right after it, since
     <code>\top</code> could still follow.</li>
-<li>Once a search term is typed, <b>↑/↓</b> move a selection
-    through the results, and Enter opens it.</li>
+<li>Search is also available from <b>Emacs</b>, see the
+    <a href="https://github.com/martinescardo/TypeTopologySearch#installing-the-emacs-command">README</a>.</li>
 </ul>
 <p class="sub">%(ndefs)s definitions and %(ncons)s concepts in %(ntotal)s modules.</p>
 <p id="browse-label" class="sub">Concept index</p>
