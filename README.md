@@ -37,7 +37,11 @@ Clone this repository first, with one of the following commands:
 
     git clone git@github.com:martinescardo/TypeTopologySearch.git
 
+or
+
     git clone https://github.com/martinescardo/TypeTopologySearch.git
+
+or
 
     gh repo clone martinescardo/TypeTopologySearch
 
