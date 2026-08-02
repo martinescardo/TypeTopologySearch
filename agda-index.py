@@ -734,6 +734,7 @@ SEARCH_TEMPLATE = r"""<!DOCTYPE html>
  p.sub { color: var(--dim); margin: .2rem 0 .4rem; }
  ul.sub { color: var(--dim); margin: 0 0 1rem; padding-left: 1.1rem; }
  ul.sub li { margin: .15rem 0; }
+ ul.sub a { text-decoration: underline; }
  .box { position: relative; }
  .box svg { position: absolute; left: .7rem; top: 50%%; transform: translateY(-50%%);
             width: 1.05rem; height: 1.05rem; color: var(--dim); pointer-events: none; }
