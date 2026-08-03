@@ -83,8 +83,8 @@ whatever \"agda-index.py\" is found on $PATH otherwise -- see
 `typetopology-search--default-generator'. Since Definitions.tsv's own
 format is tied to the exact script version that wrote it, keep
 whichever one this points at in sync with this file's own version
-(the same checkout, or the same commit) rather than pointing it at an
-unrelated or older copy."
+(the same installation, or at least the same version) rather than
+pointing it at an unrelated or older copy."
   :type '(choice file (const :tag "Never update automatically" nil))
   :group 'typetopology-search)
 
@@ -117,7 +117,7 @@ label only, the same as a contributor is matched by name -- not by
 their prose pattern or search alias the way the browser search page's
 own concept matching also is -- so this could in principle turn out to
 add enough entries to make filtering noticeably slower on a real
-checkout's full concept list (as of this writing, ~237 of them).
+library's full concept list (as of this writing, ~237 of them).
 
 Set to nil to drop concept entries at load time, with no need to
 regenerate `typetopology-search-file' or revert any code, if that turns
@@ -136,7 +136,7 @@ query starting \"-- \" (see `typetopology-search--filter'), but by far
 the largest addition to the index by entry count (as of this writing,
 ~12,000 of them against ~21,000 definitions) and the biggest single
 chunk of text in it, so this is the cheapest possible way to find out
-whether that makes filtering noticeably slower on a real checkout,
+whether that makes filtering noticeably slower on a real library,
 without regenerating `typetopology-search-file' or reverting any code.
 
 Set to nil to drop comment entries at load time; the change takes
