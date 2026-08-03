@@ -44,6 +44,11 @@ notions rather than variables.
 import argparse, bisect, collections, datetime, glob, html, json, os, re
 import subprocess, unicodedata
 
+# The one name of the library this script is built for, used everywhere
+# below that would otherwise repeat the literal "TypeTopology" -- porting
+# this to another Agda development starts here.
+REPO_NAME = "TypeTopology"
+
 KIND = r"(Function|Datatype|Record|Postulate|Primitive|Field|Module|Macro|" \
        r"InductiveConstructor)( Operator)?"
 GREEK_LOWER = {chr(c) for c in range(0x3B1, 0x3CA)}
@@ -539,7 +544,7 @@ def write_identifier_index(rows, out, site, ntotal):
         open(f"{out}/{f}.md", "w", encoding="utf-8").write(
             "\n".join([f"# {title}", "", nav, "", f"{len(ns)} names.", ""] +
                       [entry(n) for n in ns]) + "\n")
-    toc = ["# Index of TypeTopology", "",
+    toc = [f"# Index of {REPO_NAME}", "",
            f"{len(groups)} names and {len(rows)} definitions, drawn from "
            f"{len({r['module'] for r in rows})} of the {ntotal} modules. The "
            "others, index modules for the most part, define no name of their "
@@ -614,7 +619,7 @@ def write_concept_index(rows, out, site, table, body):
             "\n".join([f"# Concepts: {L}", "", nav, "",
                        f"{counts[L]} concept{'s'[:counts[L]^1]}.", ""]
                       + entries[L]) + "\n")
-    toc = ["# Concept index of TypeTopology", "",
+    toc = [f"# Concept index of {REPO_NAME}", "",
            f"{len(concepts)} concepts, over the {len(body)} modules.", "",
            "Each entry names in bold the definitions that *are* the concept and",
            "where they live, then the other definitions carrying its name, most",
@@ -649,7 +654,7 @@ def write_defs_index(rows, out):
         scope_text = r.get("scope_text") or ""
         assumes = f"  (assumes: {scope_text})" if scope_text else ""
         lines.append(r["name"] + (f" : {sig}" if sig else "") + tail + assumes)
-    header = ["# TypeTopology definitions index -- name, signature where "
+    header = [f"# {REPO_NAME} definitions index -- name, signature where "
               "known, module and use count, and any hypothesis taken by an",
               "# enclosing module rather than repeated in the signature "
               "itself.",
@@ -720,7 +725,7 @@ def write_emacs_index(rows, out, sourcedir, people, concepts, paras):
             ncoms += 1
     entries.sort(key=lambda e: sortkey(e[0]))
     lines = ["\t".join(fields) for _, fields in entries]
-    header = ["# TypeTopology definitions, contributors, concepts, and "
+    header = [f"# {REPO_NAME} definitions, contributors, concepts, and "
               "comments index for programs, tab-separated. Columns: name,",
               "# module (with any inner submodule), module alone (what "
               "\"open import\" wants), source file relative to the source",
@@ -753,7 +758,7 @@ def write_emacs_index(rows, out, sourcedir, people, concepts, paras):
 SEARCH_TEMPLATE = r"""<!DOCTYPE html>
 <html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Search TypeTopology</title>
+<title>Search %(name)s</title>
 <style>
  :root { color-scheme: light dark; --fg:#111; --bg:#fff; --dim:#666; --line:#ddd; --hi:#0a5; }
  @media (prefers-color-scheme: dark) {
@@ -821,8 +826,8 @@ SEARCH_TEMPLATE = r"""<!DOCTYPE html>
  #browse a:hover { color: var(--hi); }
  footer { color: var(--dim); font-size: .85em; margin-top: 2rem; }
 </style></head><body>
-<h1>Search <a href=%(site)s title="Go to the TypeTopology web pages"
-   >TypeTopology</a></h1>
+<h1>Search <a href=%(site)s title="Go to the %(name)s web pages"
+   >%(name)s</a></h1>
 <div class="box">
 <input id="q" autofocus autocomplete="off" spellcheck="false"
        placeholder="compact, ainjective, is-*-compact, compact in Ordinals ...">
@@ -1458,6 +1463,7 @@ def write_search_page(rows, out, site, table, body, paras, people, unsafe, escap
                      sti.get(scope_text, -1), used_by])
     defs.sort(key=lambda d: -d[3])
     page = SEARCH_TEMPLATE % dict(
+        name=REPO_NAME,
         ndefs=f"{len(defs):,}", ncons=len(cons), ntotal=f"{len(body):,}",
         ncoms=f"{len(coms):,}",
         site=json.dumps(site), mods=json.dumps(mods, ensure_ascii=False),
@@ -1582,13 +1588,13 @@ def main():
     if not os.path.isdir(a.source):
         raise SystemExit(
             f"--source {a.source!r} is not a directory. This script needs "
-            "a TypeTopology checkout; the default guess (this script's own "
+            f"a {REPO_NAME} checkout; the default guess (this script's own "
             "parent directory) is right only by coincidence -- pass "
-            "--typetopology /path/to/TypeTopology explicitly.")
+            f"--typetopology /path/to/{REPO_NAME} explicitly.")
     if not os.path.exists(os.path.join(a.source, a.entry)):
         raise SystemExit(
             f"{a.entry} not found under --source {a.source!r} -- this "
-            "does not look like a TypeTopology source directory.")
+            f"does not look like a {REPO_NAME} source directory.")
     os.makedirs(a.out, exist_ok=True)
     htmldir = a.html or os.path.join(a.typetopology, "html")
     if not a.html:

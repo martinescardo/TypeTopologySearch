@@ -146,6 +146,12 @@ since entries already loaded are not retroactively dropped."
   :type 'boolean
   :group 'typetopology-search)
 
+(defconst typetopology-search--repo-name "TypeTopology"
+  "The one name of the library this file is built for, used everywhere
+below that would otherwise repeat the literal \"TypeTopology\" -- in
+messages, buffer names, and error text alike. Porting this file to
+another Agda development starts here.")
+
 ;; ------------------------------------------------------------- data
 
 (cl-defstruct (typetopology-search-entry
@@ -348,18 +354,21 @@ to date, only Definitions.tsv itself is updated) closer to ten
 seconds."
   (unless (and typetopology-search-generator
               (file-exists-p typetopology-search-generator))
-    (user-error "No TypeTopology index at %s, and no generator script to \
+    (user-error "No %s index at %s, and no generator script to \
 build it (typetopology-search-generator is %s) -- run \
 agda-index.py --emacs-index by hand, or set typetopology-search-file \
 to an index built elsewhere"
+                typetopology-search--repo-name
                 typetopology-search-file typetopology-search-generator))
   (unless (and typetopology-search-checkout-root
               (file-directory-p (typetopology-search--source-root)))
     (user-error "typetopology-search-checkout-root (%s) has no source/ \
-subdirectory -- set it to your TypeTopology directory"
-                typetopology-search-checkout-root))
-  (message "TypeTopology: building the search index (agda-index.py \
---emacs-index) -- this can take a while the first time...")
+subdirectory -- set it to your %s directory"
+                typetopology-search-checkout-root
+                typetopology-search--repo-name))
+  (message "%s: building the search index (agda-index.py \
+--emacs-index) -- this can take a while the first time..."
+           typetopology-search--repo-name)
   (with-temp-buffer
     ;; --source and --out are passed explicitly rather than left to
     ;; agda-index.py's own defaults (a directory relative to itself),
@@ -388,7 +397,7 @@ subdirectory -- set it to your TypeTopology directory"
       (unless (zerop status)
         (error "typetopology-search: agda-index.py --emacs-index failed \
 (exit %s):\n%s" status (buffer-string)))))
-  (message "TypeTopology: search index built."))
+  (message "%s: search index built." typetopology-search--repo-name))
 
 ;;;###autoload
 (defun typetopology-search-update-index ()
@@ -463,9 +472,9 @@ Finally, see `typetopology-search--check-staleness'."
   (unless (and typetopology-search-file (file-exists-p typetopology-search-file))
     (if typetopology-search-generator
         (typetopology-search--rebuild)
-      (user-error "TypeTopology index not found (%s) -- run \
+      (user-error "%s index not found (%s) -- run \
 agda-index.py --emacs-index, or set typetopology-search-file"
-                  typetopology-search-file)))
+                  typetopology-search--repo-name typetopology-search-file)))
   (let ((mtime (file-attribute-modification-time
                 (file-attributes typetopology-search-file))))
     (unless (and typetopology-search--entries
@@ -811,7 +820,8 @@ first, then scopes what remains exactly as any other query would."
 
 ;; ------------------------------------------------------ showing the list
 
-(defconst typetopology-search--results-buffer-name " *TypeTopology Search*")
+(defconst typetopology-search--results-buffer-name
+  (format " *%s Search*" typetopology-search--repo-name))
 
 (defun typetopology-search--highlight-matches (start end terms)
   "Add the standard `match' face over every occurrence of each of TERMS
@@ -872,9 +882,10 @@ dimmed and tucked out of the way, is deliberately hard to miss instead."
       (let ((inhibit-read-only t) (selected-pos nil))
         (erase-buffer)
         (when (and query typetopology-search--index-stale)
-          (insert (propertize "TypeTopology: the index looks older than the \
+          (insert (propertize (format "%s: the index looks older than the \
 source -- press C-c C-u to update it (search still works, just \
 possibly missing recent definitions)"
+                                      typetopology-search--repo-name)
                               'face 'bold))
           (insert "\n\n"))
         (cond
@@ -1028,7 +1039,7 @@ only ever opens for whatever is currently selected, so someone who has
 typed nothing yet, or nothing that matches -- exactly who is most
 likely to need this -- could never reach it there."
   (interactive)
-  (with-help-window "*TypeTopology Search Help*"
+  (with-help-window (format "*%s Search Help*" typetopology-search--repo-name)
     (princ "\
 Keys
   ↑ / ↓    move the selection

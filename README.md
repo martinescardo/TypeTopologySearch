@@ -30,6 +30,7 @@ page](https://martinescardo.github.io/TypeTopologySearch.html) and an
     1. [The Unicode escape table](#the-unicode-escape-table)
     1. [How the search is implemented](#how-the-search-is-implemented)
     1. [Other Makefile targets](#other-makefile-targets)
+ 1. [Porting this to other Agda developments](#porting-this-to-other-agda-developments)
 
 ## Installing the Emacs command
 
@@ -159,7 +160,7 @@ one module, so it is scoped by `in PATH` exactly like a definition:
 `-- compact in Ordinals` composes the two. Set
 `typetopology-search-include-comments` to nil to drop these entries
 at load time if they turn out to make filtering noticeably slower on
-a real checkout.
+a real library.
 
 <sub>[Table of contents](#table-of-contents)</sub>
 
@@ -386,8 +387,8 @@ We look for the file `agda-index.py` in the same directory as
 `typetopology-search.el` first. If `typetopology-search.el` was copied
 somewhere else on its own, with no such sibling, we fall back to
 whatever `agda-index.py` is found on `$PATH` instead. Adding this
-repository to `$PATH`, or just a symlink to `agda-index.py` there,
-both work.
+repository to `$PATH`, or just a symbolic link to `agda-index.py`
+there, both work.
 
 <sub>[Table of contents](#table-of-contents)</sub>
 
@@ -495,5 +496,17 @@ variables, such as `ap`, `J` and `W`.
 * Each of the above is also a build target on its own.
 
 See the [Makefile](Makefile) itself for further details.
+
+<sub>[Table of contents](#table-of-contents)</sub>
+
+## Porting this to other Agda developments
+
+This was built for TypeTopology, but most of what we have here should
+work for any repository. Reading Agda's own HTML rendering, ranking
+results, handling wildcards -- none of it is really about TypeTopology
+at all; what is, is a handful of hardcoded names, plus a couple of
+things TypeTopology itself does its own way. [Porting.md](Porting.md)
+goes through all of it, for anyone who wants to port this to another
+Agda development.
 
 <sub>[Table of contents](#table-of-contents)</sub>
