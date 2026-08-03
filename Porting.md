@@ -19,9 +19,9 @@ parts do.
 
 ## Architecture
 
-There is really only one program here, `agda-index.py`. The search
-page and the Emacs command are two different things it produces, not
-two separate implementations of indexing.
+There is only one program here, `agda-index.py`, and it does
+the indexing just once. The search page and the Emacs command are
+simply the two things it writes out afterwards.
 
 It begins by rendering the development with `agda --html`, unless a
 rendering is already there and newer than every source file, in which
@@ -72,8 +72,8 @@ Matching, ranking, and the special search syntax are implemented
 twice: once in the JavaScript this script writes, and once in the
 Emacs command's own Lisp. The two never communicate at runtime, so
 there is no single search engine to port once and have both front ends
-follow along. Whoever ports this is really maintaining two
-implementations by hand, kept in step only by care.
+follow along. Whoever ports this is maintaining two implementations by
+hand, kept in step only by care.
 
 Finally, a point about layout rather than code. This tool and the
 development it searches live in two separate repositories. Everything
@@ -146,7 +146,7 @@ all, but it is worth knowing if the development being ported to does.
 Three directories sink to the bottom of the ranking before relevance
 is even considered, `Unsafe`, `deprecated`, and `MGS`, in that order,
 and the browser page additionally leaves `gist` and `TWA` out of its
-own guess at which module a concept is really at home in. All five
+own guess at which module a concept is at home in. All five
 names are written directly into the code, in three different places:
 `AREA` and `SIDELINE` in `agda-index.py`, and
 `typetopology-search--entry-area` in `typetopology-search.el`.
@@ -170,7 +170,7 @@ There is exactly one entry in the browser page's own lookup table,
 separate times, for four genuinely different notions of compactness,
 close enough in how often each is used that nothing else could tell
 them apart. This is not something to port so much as something to
-build again the same way it was built here, by running a real search
+build again the same way it was built here, by running a search
 against a real development and noticing an ambiguous, popular name. It
 starts empty for anyone else, and will probably stay that way for a
 while.
@@ -197,7 +197,7 @@ heading-and-bullet convention.
 
 This already fails gracefully, the same way a missing concept
 vocabulary does: no matching heading simply means no contributors, not
-an error. So there are really three ways to handle this in a port:
+an error. So there are three ways to handle this in a port:
 format the target repository's own README the same way, adjust
 `people_of()` to whatever convention it already uses, or simply live
 without contributor search.
@@ -226,7 +226,7 @@ the same way this one did.
 A handful of strings say "TypeTopology" outright: the search page's own
 title and heading, a few Emacs status messages, and the two
 command-line options `--typetopology` and `--site`, along with their
-defaults, the latter pointing at the real, current search page,
+defaults, the latter pointing at the live search page,
 `https://martinescardo.github.io/TypeTopology/`. None of this changes
 what the tool actually does, since pointing `--typetopology` or
 `typetopology-search-checkout-root` at some other development already

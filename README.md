@@ -502,9 +502,9 @@ See the [Makefile](Makefile) itself for further details.
 
 This was built for TypeTopology, but most of what we have here should
 work for any repository. Reading Agda's own HTML rendering, ranking
-results, and handling wildcards are not really about TypeTopology at
-all; what is, is a handful of names fixed in the code, plus a couple
-of things TypeTopology itself does its own way. [Porting.md](Porting.md)
+results, and handling wildcards are not about TypeTopology at all;
+what is, is a handful of names fixed in the code, plus a couple of
+things specific to how TypeTopology itself is organised. [Porting.md](Porting.md)
 goes through all of it, for anyone who wants to port this to another
 Agda development.
 
