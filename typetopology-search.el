@@ -128,18 +128,45 @@ retroactively dropped."
   :type 'boolean
   :group 'typetopology-search)
 
+(defcustom typetopology-search-include-comments t
+  "Whether comment entries (see `typetopology-search-entry-kind') are
+kept when `typetopology-search-file' is loaded. A comment entry is one
+paragraph of the library's own prose commentary, only ever shown for a
+query starting \"-- \" (see `typetopology-search--filter'), but by far
+the largest addition to the index by entry count (as of this writing,
+~12,000 of them against ~21,000 definitions) and the biggest single
+chunk of text in it, so this is the cheapest possible way to find out
+whether that makes filtering noticeably slower on a real checkout,
+without regenerating `typetopology-search-file' or reverting any code.
+
+Set to nil to drop comment entries at load time; the change takes
+effect on the next load (a fresh `typetopology-search--ensure-loaded'
+or `typetopology-search-update-index' call, or restarting Emacs),
+since entries already loaded are not retroactively dropped."
+  :type 'boolean
+  :group 'typetopology-search)
+
 ;; ------------------------------------------------------------- data
 
 (cl-defstruct (typetopology-search-entry
                (:constructor typetopology-search-entry-create))
   "One row of Definitions.tsv -- a definition (KIND `def', the default),
-a contributor (KIND `person'), or a concept (KIND `concept'), told
-apart by Definitions.tsv's own trailing column. Neither a person nor a
-concept has a DISPMOD, IMPORTMOD, FILE, or SIG of their own -- all
-\"\" -- USES holds how many modules mention them, not a use count, and
-ASSUMES holds which ones, semicolon-separated, instead of an
-enclosing-module hypothesis."
-  name        ; bare identifier, a contributor's name, or a concept's label
+a contributor (KIND `person'), a concept (KIND `concept'), or one
+paragraph of prose commentary (KIND `comment'), told apart by
+Definitions.tsv's own trailing column. Neither a person nor a concept
+has a DISPMOD, IMPORTMOD, FILE, or SIG of their own -- all \"\" --
+USES holds how many modules mention them, not a use count, and ASSUMES
+holds which ones, semicolon-separated, instead of an enclosing-module
+hypothesis. A comment's NAME is the paragraph text itself, and its
+DISPMOD, IMPORTMOD and ASSUMES all hold the one module it was found
+in -- unlike a person or concept, a paragraph belongs to exactly one
+module, so IMPORTMOD is never blank the way theirs is, and it is
+scoped by an \" in PATH\" query (see `typetopology-search--filter') the
+same way a definition is; ASSUMES repeats it only so
+`typetopology-search--jump-to-mention' can read it the same way it
+already reads a person's or concept's own ASSUMES."
+  name        ; bare identifier, a contributor's name, a concept's label, or
+              ; a comment's paragraph text
   dispmod     ; module, with any inner submodule, for display
   importmod   ; module alone, what `open import' wants
   file        ; source file, relative to the TypeTopology source directory
@@ -147,10 +174,11 @@ enclosing-module hypothesis."
   uses        ; use count, an integer -- or, for a person/concept, module count
   sig         ; signature, or ""
   assumes     ; enclosing-module hypotheses, or "" -- or, for a
-              ; person/concept, the modules mentioning them, semicolon-separated
-  (kind 'def) ; `def', `person', or `concept' -- defaults to `def' so code
-              ; and tests built before this distinction existed still work
-              ; unchanged
+              ; person/concept/comment, the module(s) mentioning them,
+              ; semicolon-separated
+  (kind 'def) ; `def', `person', `concept', or `comment' -- defaults to `def'
+              ; so code and tests built before this distinction existed
+              ; still work unchanged
   dtext)      ; lower-cased display text, cached -- see `typetopology-search--dtext'
 
 (defvar typetopology-search--entries nil
@@ -179,18 +207,28 @@ list.")
 (defun typetopology-search--display (e)
   "The candidate text shown for entry E. For a contributor or a concept
 (see `typetopology-search-entry-kind'), just their name/label and how
-many modules mention them. Otherwise mirrors Definitions.txt's own
-one-line-per-definition shape -- including, the same as there, a
-trailing \"(assumes: ...)\" clause for any hypothesis (`funext', a
-whole record's worth of structure, ...) taken once by an enclosing
-module rather than repeated in E's own signature, which otherwise
-never shows up anywhere at all."
+many modules mention them. For a comment, the paragraph itself
+followed by the one module it was found in -- unlike a definition's own
+\"uses\" and \"(assumes: ...)\" clauses, neither applies to a paragraph,
+so both are left out rather than shown as 0 or repeating the module a
+second time (ASSUMES holds it too, but only for
+`typetopology-search--jump-to-mention' to read). Otherwise mirrors
+Definitions.txt's own one-line-per-definition shape -- including, the
+same as there, a trailing \"(assumes: ...)\" clause for any hypothesis
+(`funext', a whole record's worth of structure, ...) taken once by an
+enclosing module rather than repeated in E's own signature, which
+otherwise never shows up anywhere at all."
   (let ((phrase (cdr (assq (typetopology-search-entry-kind e)
                            typetopology-search--mention-phrase))))
-    (if phrase
-        (format "%s  (%s %d modules)"
-                (typetopology-search-entry-name e) phrase
-                (typetopology-search-entry-uses e))
+    (cond
+     (phrase
+      (format "%s  (%s %d modules)"
+              (typetopology-search-entry-name e) phrase
+              (typetopology-search-entry-uses e)))
+     ((eq (typetopology-search-entry-kind e) 'comment)
+      (concat (typetopology-search-entry-name e)
+              "  [" (typetopology-search-entry-dispmod e) "]"))
+     (t
       (concat (typetopology-search-entry-name e)
               (unless (string-empty-p (typetopology-search-entry-sig e))
                 (concat " : " (typetopology-search-entry-sig e)))
@@ -199,7 +237,7 @@ never shows up anywhere at all."
                 (format ", %d uses" (typetopology-search-entry-uses e)))
               "]"
               (unless (string-empty-p (typetopology-search-entry-assumes e))
-                (concat "  (assumes: " (typetopology-search-entry-assumes e) ")"))))))
+                (concat "  (assumes: " (typetopology-search-entry-assumes e) ")")))))))
 
 (defun typetopology-search--display-propertized (e)
   "Like `typetopology-search--display', but with faces applied so a
@@ -209,17 +247,27 @@ module, use count, and any assumption clause -- in `shadow', the
 standard Emacs face for de-emphasised text, and the word \"assumes\"
 itself in `italic' on top of that. A contributor's or concept's
 \"(named/discussed in ...)\" clause is `shadow' too, with no `italic'
-word of its own. Query-match highlighting is a separate step, in
-`typetopology-search--render', since it depends on what was actually
-typed, not on the entry alone."
-  (let ((name (propertize (typetopology-search-entry-name e) 'face 'bold))
-        (phrase (cdr (assq (typetopology-search-entry-kind e)
+word of its own. A comment's own name is a whole paragraph rather than
+a short identifier, so it is left in the default face -- bolding a
+paragraph reads as heavier, not easier to pick out -- with only its
+trailing module bracket in `shadow'. Query-match highlighting is a
+separate step, in `typetopology-search--render', since it depends on
+what was actually typed, not on the entry alone."
+  (let ((phrase (cdr (assq (typetopology-search-entry-kind e)
                            typetopology-search--mention-phrase))))
-    (if phrase
-        (concat name (propertize (format "  (%s %d modules)"
-                                         phrase (typetopology-search-entry-uses e))
-                                  'face 'shadow))
-      (let* ((sig (typetopology-search-entry-sig e))
+    (cond
+     (phrase
+      (concat (propertize (typetopology-search-entry-name e) 'face 'bold)
+              (propertize (format "  (%s %d modules)"
+                                  phrase (typetopology-search-entry-uses e))
+                          'face 'shadow)))
+     ((eq (typetopology-search-entry-kind e) 'comment)
+      (concat (typetopology-search-entry-name e)
+              (propertize (concat "  [" (typetopology-search-entry-dispmod e) "]")
+                          'face 'shadow)))
+     (t
+      (let* ((name (propertize (typetopology-search-entry-name e) 'face 'bold))
+             (sig (typetopology-search-entry-sig e))
              (assumes (typetopology-search-entry-assumes e))
              (rest (concat
                     (unless (string-empty-p sig) (concat " : " sig))
@@ -234,21 +282,24 @@ typed, not on the entry alone."
           (let ((pos (string-match-p (regexp-quote "(assumes: ") rest)))
             (when pos
               (add-face-text-property (1+ pos) (+ pos 8) 'italic nil rest))))
-        (concat name rest)))))
+        (concat name rest))))))
 
 (defun typetopology-search--parse-line (line)
   "One Definitions.tsv line -> an entry, or nil for a malformed line (left
 lenient on purpose, so one bad line does not take the whole index down),
 or for a concept line when `typetopology-search-include-concepts' is
-nil (see there) -- the cheapest possible removal, done right here at
-load time rather than filtered out again on every keystroke afterward.
-The trailing kind column (\"def\", \"person\", or \"concept\") is itself
-optional here, defaulting to `def', so an index built before
-contributors or concepts were added still parses exactly as before."
+nil, or a comment line when `typetopology-search-include-comments' is
+nil (see there for both) -- the cheapest possible removal, done right
+here at load time rather than filtered out again on every keystroke
+afterward. The trailing kind column (\"def\", \"person\", \"concept\",
+or \"comment\") is itself optional here, defaulting to `def', so an
+index built before contributors, concepts, or comments were added still
+parses exactly as before."
   (let ((f (split-string line "\t" nil)))
     (when (>= (length f) 8)
       (let ((kind (if (>= (length f) 9) (intern (nth 8 f)) 'def)))
-        (unless (and (eq kind 'concept) (not typetopology-search-include-concepts))
+        (unless (or (and (eq kind 'concept) (not typetopology-search-include-concepts))
+                    (and (eq kind 'comment) (not typetopology-search-include-comments)))
           (let ((e (typetopology-search-entry-create
                    :name (nth 0 f) :dispmod (nth 1 f) :importmod (nth 2 f)
                    :file (nth 3 f) :line (string-to-number (nth 4 f))
@@ -449,12 +500,12 @@ default plain RET repeats, unlike the others.")
 
 (defconst typetopology-search--contributor-actions
   '(jump-to-mention)
-  "Which of `typetopology-search--actions' a contributor or a concept
-offers -- see `typetopology-search--actions-for'. Inserting their name
-at point, this file's very first idea for a contributor result, does
-not belong here: nobody wants that: what a contributor or concept
-result is actually for is finding one of the modules that mentions it
-and jumping there -- the ONLY thing, deliberately not also offering
+  "Which of `typetopology-search--actions' a contributor, a concept, or a
+comment offers -- see `typetopology-search--actions-for'. Inserting a
+contributor's name at point, this file's very first idea for a
+contributor result, does not belong here: nobody wants that: what all
+three are actually for is finding the module they were found in and
+jumping there -- the ONLY thing, deliberately not also offering
 \"update the index\" here the way a definition's own menu does, since
 `typetopology-search--decide-action' skips the menu entirely (RET goes
 straight to the one action) whenever there is only one to choose from.")
@@ -463,11 +514,12 @@ straight to the one action) whenever there is only one to choose from.")
   "The subset of `typetopology-search--actions', in order, that ENTRY
 actually offers on the menu -- `typetopology-search--definition-actions'
 for a definition, `typetopology-search--contributor-actions' for a
-contributor or a concept (see `typetopology-search-entry-kind'): neither
-has a source file or module of their own to jump to directly or open an
-import for, only modules that mention them, reached instead via
+contributor, a concept, or a comment (see
+`typetopology-search-entry-kind'): none of the three has a source file
+of its own to jump to directly or open an import for, only a module
+that mentions it (or, for a comment, was found in), reached instead via
 `jump-to-mention' (see `typetopology-search--jump-to-mention')."
-  (let ((wanted (if (memq (typetopology-search-entry-kind entry) '(person concept))
+  (let ((wanted (if (memq (typetopology-search-entry-kind entry) '(person concept comment))
                     typetopology-search--contributor-actions
                   typetopology-search--definition-actions)))
     (cl-remove-if-not (lambda (a) (memq (cdr a) wanted))
@@ -653,6 +705,23 @@ keyword search already matches nothing on its own, see
         (cons (string-join (butlast words 2) " ") (car (last words)))
       (cons query nil))))
 
+(defun typetopology-search--split-comment-only (query)
+  "QUERY split into (REST . WANT-COMMENTS) when QUERY starts with a
+literal \"--\" (two hyphens, Agda's own comment marker -- Agda itself
+needs no space after it either, so neither does this: \"--compact\" and
+\"-- compact\" both work) -- the same syntax the browser search page's
+\"search within commentary instead\" checkbox offers, but written as a
+query prefix here since there is no minibuffer checkbox to tick).
+WANT-COMMENTS is non-nil and REST is QUERY with the marker and any
+further leading whitespace stripped; otherwise WANT-COMMENTS is nil and
+REST is QUERY unchanged. No real definition, contributor, or concept
+name starts with \"--\" (Agda's own lexer could not tell it apart from
+a comment if one tried), so there is nothing this could mistakenly
+intercept."
+  (if (string-prefix-p "--" query)
+      (cons (string-trim-left (substring query 2)) t)
+    (cons query nil)))
+
 (defun typetopology-search--in-scope-p (path mod)
   "Whether MOD (a dotted module name) lies within PATH, the way the
 browser page's own path-scoped search does: PATH is split on \".\" into
@@ -697,14 +766,30 @@ additionally requires the entry's own module to lie within PATH (see
 `typetopology-search--in-scope-p') -- PATH itself plays no part in the
 term matching above, only KEYWORDS does. A contributor or concept entry
 has no module of its own, so neither ever survives an \" in PATH\" query
-at all; only definitions are scoped this way for now."
+at all; a comment entry does, and is scoped by it exactly like a
+definition.
+
+A query starting \"--\" (see `typetopology-search--split-comment-only';
+no space needed after it, matching Agda's own comment syntax) searches
+comment entries ONLY, excluding every definition, contributor,
+and concept -- and vice versa, an ordinary query never matches a
+comment entry -- since prose commentary is both the single biggest
+chunk of text in the index and the likeliest to hit a plain word by
+accident, the same reasoning behind the browser search page's own
+\"search within commentary instead\" checkbox defaulting off. The two
+markers compose: \"-- compact in Ordinals\" strips the leading marker
+first, then scopes what remains exactly as any other query would."
   (if (string-blank-p query)
       nil
-    (pcase-let ((`(,keywords . ,path) (typetopology-search--split-in-scope query)))
+    (pcase-let ((`(,rest . ,want-comments) (typetopology-search--split-comment-only query)))
+     (pcase-let ((`(,keywords . ,path) (typetopology-search--split-in-scope rest)))
       (let* ((terms (typetopology-search--terms keywords))
              (matches (cl-remove-if-not
                        (lambda (e)
-                         (and (or (null path)
+                         (and (if want-comments
+                                 (eq (typetopology-search-entry-kind e) 'comment)
+                               (not (eq (typetopology-search-entry-kind e) 'comment)))
+                             (or (null path)
                                  (typetopology-search--in-scope-p
                                   path (typetopology-search-entry-importmod e)))
                              (let ((text (typetopology-search-entry-dtext e)))
@@ -722,7 +807,7 @@ at all; only definitions are scoped this way for now."
                      (if (= sa sb)
                          (> (typetopology-search-entry-uses a)
                             (typetopology-search-entry-uses b))
-                       (< sa sb)))))))))))
+                       (< sa sb))))))))))))
 
 ;; ------------------------------------------------------ showing the list
 
@@ -1199,15 +1284,23 @@ semicolon-separated list of dotted module names instead of an
 enclosing-module hypothesis, and jump to its source file, at the very
 top -- unlike `typetopology-search--jump-to-source', there is no one
 specific definition to put point at, only the module ENTRY is
-mentioned somewhere in the commentary of."
+mentioned somewhere in the commentary of. A comment entry's own
+ASSUMES always holds exactly one module, the one its paragraph was
+found in, never several -- prompting which of ONE module to jump to is
+pure friction, the same reasoning `typetopology-search--decide-action'
+already applies one level up to skip the action menu entirely when
+there is only one action, so this skips the picker too when there is
+only one module, regardless of ENTRY's kind."
   (let ((modules (split-string (typetopology-search-entry-assumes entry) ";" t)))
     (unless modules
       (user-error "No modules recorded for %s"
                   (typetopology-search-entry-name entry)))
-    (let* ((mod (typetopology-search--pick-from-list
-                (format "%s -- jump to which module? "
-                        (typetopology-search-entry-name entry))
-                modules))
+    (let* ((mod (if (= (length modules) 1)
+                    (car modules)
+                  (typetopology-search--pick-from-list
+                   (format "%s -- jump to which module? "
+                           (typetopology-search-entry-name entry))
+                   modules)))
            (path (and mod (typetopology-search--module-path mod))))
       (unless path
         (user-error "Source file for %s not found (typetopology-search-checkout-root is %s)"
@@ -1239,9 +1332,10 @@ ignores E entirely, since it does not act on any particular entry."
 
 ;;;###autoload
 (defun typetopology-search ()
-  "Search TypeTopology's ~21,000 definitions, its contributors, and its
-concepts (see `typetopology-search-include-concepts'), by name/label
-or type fragment, and act on the one you pick.
+  "Search TypeTopology's ~21,000 definitions, its contributors, its
+concepts (see `typetopology-search-include-concepts'), and its prose
+commentary (see `typetopology-search-include-comments'), by name/label,
+type fragment, or paragraph, and act on the one you pick.
 
 Plain RET repeats whatever action you last chose (or, the very first
 time this is used in a session, opens a menu to choose one, so all are
@@ -1255,11 +1349,24 @@ insert the matched name at point; insert \"open import Module\" for
 it; or update the index (see `typetopology-search-update-index') --
 the odd one out, since it does not act on the entry the menu was
 opened for at all, and so never becomes what RET repeats afterward. A
-contributor or a concept, matched by name/label alone, has no source
-file or module of their own to jump to or open an import for directly,
-and no menu either: the only thing to do with one is jump to one of the
-modules that mentions it, picked from a second list, so RET and TAB
-alike go straight there (see `typetopology-search--decide-action').
+contributor, a concept, or a comment, matched by name/label/paragraph
+alone, has no source file of their own to open an import for directly,
+and no menu either: the only thing to do with one is jump to the module
+it was found in -- one picked from a list for a contributor or concept,
+who can be mentioned in several, but straight there with no picker at
+all for a comment, which is always found in exactly one -- so RET and
+TAB alike go straight to the jump (see
+`typetopology-search--decide-action' and
+`typetopology-search--jump-to-mention').
+
+A query starting \"--\" (Agda's own comment marker, no space needed
+after it) searches commentary ONLY, excluding every definition,
+contributor, and concept, and composes with the usual \" in PATH\"
+scoping: \"-- compact in Ordinals\" (see
+`typetopology-search--filter'). An ordinary query,
+without the marker, never matches a paragraph -- commentary is both
+the single biggest chunk of text in the index and the likeliest to hit
+a plain word by accident, so it stays out unless asked for.
 
 This searches the whole library regardless of what the current buffer
 has imported -- for a live, exactly-normalised type of something

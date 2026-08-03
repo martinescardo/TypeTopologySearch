@@ -42,6 +42,16 @@ oddly."
    :name "compactness" :dispmod "" :importmod "" :file "" :line 0 :uses 42
    :sig "" :assumes "M.A;M.B" :kind 'concept))
 
+(defun tt-search--sample-comment-entry ()
+  "A comment entry always has exactly one module, in BOTH DISPMOD/IMPORTMOD
+(so \" in PATH\" scopes it like a definition) and ASSUMES (so
+`typetopology-search--jump-to-mention' can read it the way it already
+reads a person's or concept's own ASSUMES)."
+  (tt-search--make-entry
+   :name "An ordinal is a type equipped with ordinal structure."
+   :dispmod "Ordinals.Type" :importmod "Ordinals.Type" :file "" :line 0
+   :uses 0 :sig "" :assumes "Ordinals.Type" :kind 'comment))
+
 ;; ------------------------------------------------------------- parsing
 
 (ert-deftest tt-search-parse-line-full ()
@@ -137,6 +147,43 @@ simply never turned into entries at load time."
     (should (typetopology-search--parse-line
             (string-join '("Escardo" "" "" "" "0" "507" "" "" "person") "\t")))))
 
+(ert-deftest tt-search-parse-line-comment ()
+  "A comment row: the paragraph itself as NAME, its one module in BOTH
+DISPMOD/IMPORTMOD (unlike a person/concept, whose module columns are
+always blank) and repeated in ASSUMES, no FILE/LINE/SIG of its own."
+  (let ((typetopology-search-include-comments t))
+    (let ((e (typetopology-search--parse-line
+              (string-join '("An ordinal is a type." "Ordinals.Type" "Ordinals.Type"
+                             "" "0" "0" "" "Ordinals.Type" "comment")
+                          "\t"))))
+      (should e)
+      (should (equal (typetopology-search-entry-name e) "An ordinal is a type."))
+      (should (equal (typetopology-search-entry-dispmod e) "Ordinals.Type"))
+      (should (equal (typetopology-search-entry-importmod e) "Ordinals.Type"))
+      (should (equal (typetopology-search-entry-assumes e) "Ordinals.Type"))
+      (should (eq (typetopology-search-entry-kind e) 'comment)))))
+
+(ert-deftest tt-search-parse-line-comment-dropped-when-disabled ()
+  "The cheapest possible removal if comments turn out to make filtering
+too slow: flip `typetopology-search-include-comments' to nil, no need
+to regenerate the index or revert any code."
+  (let ((typetopology-search-include-comments nil))
+    (should (null (typetopology-search--parse-line
+                  (string-join '("An ordinal is a type." "Ordinals.Type" "Ordinals.Type"
+                                 "" "0" "0" "" "Ordinals.Type" "comment")
+                              "\t"))))))
+
+(ert-deftest tt-search-parse-line-def-unaffected-by-include-comments-nil ()
+  "Disabling comments must not drop definitions, contributors, or
+concepts too."
+  (let ((typetopology-search-include-comments nil))
+    (should (typetopology-search--parse-line
+            (string-join '("flabby" "M" "M" "x.lagda" "1" "0" "" "" "def") "\t")))
+    (should (typetopology-search--parse-line
+            (string-join '("Escardo" "" "" "" "0" "507" "" "" "person") "\t")))
+    (should (typetopology-search--parse-line
+            (string-join '("compactness" "" "" "" "0" "42" "" "M.A;M.B" "concept") "\t")))))
+
 ;; ------------------------------------------------------------- display
 
 (ert-deftest tt-search-display-with-sig-and-uses ()
@@ -205,6 +252,29 @@ wording for the two different lists."
          (s (typetopology-search--display-propertized e)))
     (should (eq (get-text-property 0 'face s) 'bold))
     (should (eq (get-text-property (length "compactness") 'face s) 'shadow))
+    (should (equal (substring-no-properties s) (typetopology-search--display e)))))
+
+(ert-deftest tt-search-display-comment ()
+  "A comment displays as the paragraph itself and the one module it was
+found in -- no \"uses\", no \"(assumes: ...)\" clause, neither of which
+applies to a paragraph (ASSUMES holds the module too, but only for
+`typetopology-search--jump-to-mention' to read, never for display)."
+  (let ((e (tt-search--sample-comment-entry)))
+    (should (equal (typetopology-search--display e)
+                   "An ordinal is a type equipped with ordinal structure.  [Ordinals.Type]"))))
+
+(ert-deftest tt-search-display-propertized-comment-name-not-bold ()
+  "Unlike every other kind, a comment's own name is a whole paragraph,
+not a short identifier -- bolding it would read as heavier, not easier
+to pick out, so it is left in the default face, with only the trailing
+module bracket in `shadow'."
+  (let* ((e (tt-search--sample-comment-entry))
+         (s (typetopology-search--display-propertized e)))
+    (should-not (eq (get-text-property 0 'face s) 'bold))
+    (should (eq (get-text-property
+                (length "An ordinal is a type equipped with ordinal structure.")
+                'face s)
+               'shadow))
     (should (equal (substring-no-properties s) (typetopology-search--display e)))))
 
 ;; ------------------------------------------------------------- loading
@@ -634,7 +704,7 @@ against the fresh entries -- all without leaving the search."
                  'jump-to-source)))))
 
 (ert-deftest tt-search-decide-action-skips-menu-for-single-action-entry ()
-  "A contributor or concept offers exactly one action (see
+  "A contributor, concept, or comment offers exactly one action (see
 `typetopology-search--contributor-actions') -- there is nothing to
 choose between, so RET (and TAB) go straight to it, with no menu ever,
 regardless of via-tab or what the sticky default from some earlier,
@@ -647,6 +717,9 @@ differently-kinded entry happened to be."
                  'jump-to-mention))
       (should (eq (typetopology-search--decide-action
                   (tt-search--sample-concept-entry) t)
+                 'jump-to-mention))
+      (should (eq (typetopology-search--decide-action
+                  (tt-search--sample-comment-entry) nil)
                  'jump-to-mention)))))
 
 (ert-deftest tt-search-decide-action-tab-always-menus ()
@@ -712,6 +785,13 @@ updating the index, which a definition's own menu does offer."
 
 (ert-deftest tt-search-actions-for-concept-same-as-contributor ()
   (should (equal (typetopology-search--actions-for (tt-search--sample-concept-entry))
+                (typetopology-search--actions-for (tt-search--sample-person-entry)))))
+
+(ert-deftest tt-search-actions-for-comment-same-as-contributor ()
+  "A comment has no source file of its own either -- only the one
+module it was found in, via the same \"jump to a module mentioning
+them\" action a contributor or concept offers."
+  (should (equal (typetopology-search--actions-for (tt-search--sample-comment-entry))
                 (typetopology-search--actions-for (tt-search--sample-person-entry)))))
 
 (ert-deftest tt-search-read-candidate-uses-dedicated-history ()
@@ -1018,9 +1098,14 @@ still works, with no error and no attempt to call it."
       (ignore-errors (kill-buffer "B.lagda"))
       (delete-directory dir t))))
 
-(ert-deftest tt-search-jump-to-mention-works-for-concepts-too ()
+(ert-deftest tt-search-jump-to-mention-skips-picker-for-single-module ()
   "`jump-to-mention' is entirely kind-agnostic: it only reads NAME and
-ASSUMES, so a concept entry works exactly like a contributor's."
+ASSUMES, so a concept entry works exactly like a contributor's -- but
+with only one module recorded, there is nothing to pick between, the
+same \"skip the menu when there is only one choice\" reasoning
+`typetopology-search--decide-action' already applies one level up, so
+the picker is skipped entirely rather than called with a one-item
+list."
   (let* ((dir (make-temp-file "tt-search-src" t))
          (typetopology-search-checkout-root dir))
     (unwind-protect
@@ -1028,13 +1113,31 @@ ASSUMES, so a concept entry works exactly like a contributor's."
           (make-directory (expand-file-name "source/M" dir) t)
           (with-temp-file (expand-file-name "source/M/A.lagda" dir) (insert "x\n"))
           (cl-letf (((symbol-function 'typetopology-search--pick-from-list)
-                     (lambda (_prompt items) (should (equal items '("M.A"))) "M.A")))
+                     (lambda (&rest _) (error "picker should not be called for one module"))))
             (typetopology-search--jump-to-mention
              (typetopology-search-entry-create
               :name "compactness" :dispmod "" :importmod "" :file "" :line 0
               :uses 1 :sig "" :assumes "M.A" :kind 'concept)))
           (should (equal (buffer-name) "A.lagda")))
       (ignore-errors (kill-buffer "A.lagda"))
+      (delete-directory dir t))))
+
+(ert-deftest tt-search-jump-to-mention-works-for-comments-too ()
+  "A comment entry's ASSUMES always holds exactly one module (the one
+its paragraph was found in, see `typetopology-search--sample-comment-entry'),
+so this both confirms `jump-to-mention' is kind-agnostic and exercises
+the single-module skip on the kind it always applies to."
+  (let* ((dir (make-temp-file "tt-search-src" t))
+         (typetopology-search-checkout-root dir))
+    (unwind-protect
+        (progn
+          (make-directory (expand-file-name "source/Ordinals" dir) t)
+          (with-temp-file (expand-file-name "source/Ordinals/Type.lagda" dir) (insert "x\n"))
+          (cl-letf (((symbol-function 'typetopology-search--pick-from-list)
+                     (lambda (&rest _) (error "picker should not be called for one module"))))
+            (typetopology-search--jump-to-mention (tt-search--sample-comment-entry)))
+          (should (equal (buffer-name) "Type.lagda")))
+      (ignore-errors (kill-buffer "Type.lagda"))
       (delete-directory dir t))))
 
 (ert-deftest tt-search-jump-to-mention-no-modules-errors-cleanly ()
@@ -1287,6 +1390,26 @@ page's own regexp, which does not match either of these strings at all."
   (should (equal (typetopology-search--split-in-scope "in Ordinals.Comp")
                 '("in Ordinals.Comp" . nil))))
 
+;; ----------------------------------------------------- comment-only marker
+
+(ert-deftest tt-search-split-comment-only-strips-marker ()
+  (should (equal (typetopology-search--split-comment-only "-- compact")
+                '("compact" . t)))
+  (should (equal (typetopology-search--split-comment-only "-- compact in Ordinals")
+                '("compact in Ordinals" . t))))
+
+(ert-deftest tt-search-split-comment-only-no-marker-unchanged ()
+  (should (equal (typetopology-search--split-comment-only "compact")
+                '("compact" . nil))))
+
+(ert-deftest tt-search-split-comment-only-no-space-needed ()
+  "Agda itself needs no space after \"--\" for it to be a comment, so
+\"--compact\" is recognized exactly like \"-- compact\" -- no real
+definition, contributor, or concept name could ever start with \"--\"
+for this to mistakenly intercept."
+  (should (equal (typetopology-search--split-comment-only "--compact")
+                '("compact" . t))))
+
 (ert-deftest tt-search-in-scope-p-prefix-on-last-segment-only ()
   "The last path segment is only a prefix -- \"compact in Ordinals.Comp\"
 already reaches `Ordinals.CompactnessOfSuprema' while still being
@@ -1331,6 +1454,64 @@ never matches one, even when their name matches the keyword part."
     (should (equal (mapcar #'typetopology-search-entry-name
                           (typetopology-search--filter "compact in Ordinals"))
                   '("compactness-lemma")))))
+
+(defun tt-search--comment-in (text mod)
+  "A comment entry whose paragraph is TEXT, found in module MOD."
+  (tt-search--make-entry
+   :name text :dispmod mod :importmod mod :file "" :line 0 :uses 0
+   :sig "" :assumes mod :kind 'comment))
+
+(ert-deftest tt-search-filter-ordinary-query-excludes-comments ()
+  "The single biggest chunk of text in the index, and the likeliest to
+hit a plain word by accident, so an ordinary query never matches it --
+only a query starting \"-- \" does (see
+`typetopology-search--split-comment-only')."
+  (let ((typetopology-search--entries
+         (list (tt-search--entry "higgs-involution-theorem")
+               (tt-search--comment-in "The Higgs object." "Higgs.AutomorphismsOfOmega"))))
+    (should (equal (mapcar #'typetopology-search-entry-name
+                          (typetopology-search--filter "higgs"))
+                  '("higgs-involution-theorem")))))
+
+(ert-deftest tt-search-filter-comment-marker-restricts-to-comments-only ()
+  "\"-- \" flips the whole result set the other way round: only comment
+entries survive, excluding every definition, contributor, and concept
+that would otherwise have matched the same keyword -- the same
+exclusive \"instead\", not \"too\", the browser search page's own
+checkbox settled on."
+  (let ((typetopology-search--entries
+         (list (tt-search--entry "higgs-involution-theorem")
+               (tt-search--make-entry
+                :name "higgs involution" :dispmod "" :importmod "" :file ""
+                :line 0 :uses 1 :sig "" :assumes "M.A" :kind 'concept)
+               (tt-search--comment-in "The Higgs object." "Higgs.AutomorphismsOfOmega"))))
+    (should (equal (mapcar #'typetopology-search-entry-name
+                          (typetopology-search--filter "-- higgs"))
+                  '("The Higgs object.")))))
+
+(ert-deftest tt-search-filter-comment-marker-composes-with-in-path ()
+  "Unlike a contributor or concept, a comment DOES have a module of its
+own, so \"-- compact in Ordinals\" scopes it exactly like a definition
+-- the composability that motivated using a query marker plus IMPORTMOD
+over a browser-style tickbox-only design in the first place."
+  (let ((typetopology-search--entries
+         (list (tt-search--comment-in "About compactness." "Ordinals.CompactnessOfSuprema")
+               (tt-search--comment-in "About compactness." "Locales.Compactness"))))
+    (should (equal (mapcar #'typetopology-search-entry-importmod
+                          (typetopology-search--filter "-- compact in Ordinals"))
+                  '("Ordinals.CompactnessOfSuprema")))))
+
+(ert-deftest tt-search-filter-in-co-prefix-unaffected-by-comment-marker ()
+  "\"in Co\" (no leading \"-- \") is an ordinary path-narrowing query,
+same as always -- the comment marker only ever fires on a literal
+leading \"-- \", never on where a plain query's own \"in PATH\" happens
+to point."
+  (let ((typetopology-search--entries
+         (list (tt-search--entry-in "is-compact" "CompactTypes")
+               (tt-search--comment-in "compact" "CompactTypes"))))
+    (should (equal (mapcar #'typetopology-search-entry-name
+                          (typetopology-search--filter "compact in Co"))
+                  '("is-compact")))))
 
 (ert-deftest tt-search-render-highlights-keywords-not-in-or-path ()
   "The \" in PATH\" suffix must not itself become a highlight term --
