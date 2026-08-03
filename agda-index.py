@@ -371,17 +371,33 @@ def comments_of(t):
     return "\n".join(m.group(1) for m in re.finditer(r"--+(.*)$", t, re.M))
 
 
+def paragraphs_of(lines):
+    """LINES (prose only, code stripped) split into paragraphs on blank-line
+    boundaries, each reflowed to one line -- for showing a comment as a
+    self-contained search hit (see write_search_page's COMS), which a single
+    long body-of-text per module (BODY above) is too coarse for."""
+    paras, cur = [], []
+    for l in lines:
+        if l.strip() == "":
+            if cur: paras.append(" ".join(cur)); cur = []
+        else:
+            cur.append(l.strip())
+    if cur: paras.append(" ".join(cur))
+    return paras
+
+
 def prose_of(sourcedir):
     "The commentary of each module, and its header, with urls removed."
     files = subprocess.run(["git", "ls-files", "*.lagda", "*.agda"], cwd=sourcedir,
                            capture_output=True, text=True).stdout.split()
-    head, body = {}, {}
+    head, body, paras = {}, {}, {}
     for f in files:
         t = open(os.path.join(sourcedir, f), encoding="utf-8", errors="replace").read()
         if f.endswith(".agda"):
             # Not literate, so the comments are the whole of the commentary.
             m = f[:-5].replace("/", ".")
             head[m] = prose = comments_of(t)
+            paras[m] = paragraphs_of(prose.split("\n"))
         else:
             m = f[:-6].replace("/", ".")
             head[m] = t.split("\\begin{code}")[0]
@@ -391,6 +407,7 @@ def prose_of(sourcedir):
                 if l.startswith("\\end{code}"):   incode = False; continue
                 if not incode: buf.append(l)
             prose = "\n".join(buf)
+            paras[m] = paragraphs_of(buf)
         t = re.sub(r"https?://\S+", " ", prose)
         # The commentary names concepts in three spellings -- as English,
         # "totally separated", as a module, "TotallySeparated", and as an
@@ -400,7 +417,7 @@ def prose_of(sourcedir):
         # are kept, as splitting JoinSemiLattice would otherwise hide it
         # from the pattern "semilattice".
         body[m] = t + "\n" + re.sub(r"(?<=[a-z])(?=[A-Z])", " ", t)
-    return head, body
+    return head, body, paras
 
 
 def unsafe_modules(sourcedir):
@@ -766,6 +783,8 @@ SEARCH_TEMPLATE = r"""<!DOCTYPE html>
  .concept td.n { color: var(--hi); font-weight: 600; }
  .person { background: color-mix(in srgb, var(--hi) 6%%, transparent); }
  .person td.n { font-weight: 600; }
+ .comment { background: color-mix(in srgb, var(--dim) 10%%, transparent); }
+ .comment td.n { font-family: inherit; white-space: normal; }
  .disc { color: var(--dim); margin-top: .35rem; line-height: 1.5; }
  .f { padding-left: 1rem; }
  .tog { color: var(--hi); cursor: pointer; display: inline-block; margin-left: 1rem; }
@@ -802,6 +821,7 @@ SEARCH_TEMPLATE = r"""<!DOCTYPE html>
 <div class="opts">
  <label><input type="checkbox" id="mods" checked> search module names too</label>
  <label><input type="checkbox" id="sigs"> search within type signatures too</label>
+ <label><input type="checkbox" id="coms"> search within commentary instead</label>
  <label><input type="checkbox" id="allscope" checked> list every enclosing assumption</label>
  <label><input type="checkbox" id="exact"> whole word</label>
 </div>
@@ -820,10 +840,11 @@ SEARCH_TEMPLATE = r"""<!DOCTYPE html>
     <code>\to</code> and <code>\MCU</code> are "→" and "𝓤",
     though <code>\to</code> itself needs a space right after it, since
     <code>\top</code> could still follow.</li>
-<li>Search is also available from <b>Emacs</b>, see the
-    <a href="https://github.com/martinescardo/TypeTopologySearch#installing-the-emacs-command">README</a>.</li>
+<li>Search is also
+    <a href="https://github.com/martinescardo/TypeTopologySearch#installing-the-emacs-command">available from Emacs</a>.</li>
 </ul>
-<p class="sub">%(ndefs)s definitions and %(ncons)s concepts in %(ntotal)s modules.</p>
+<p class="sub">%(ndefs)s definitions and %(ncons)s concepts in %(ntotal)s modules
+   (%(ncoms)s comments).</p>
 <p id="browse-label" class="sub">Concept index</p>
 <div id="browse"></div>
 </div>
@@ -833,7 +854,7 @@ SEARCH_TEMPLATE = r"""<!DOCTYPE html>
 const SITE=%(site)s, MODS=%(mods)s, DEFS=%(defs)s, CONS=%(cons)s,
       PEOPLE=%(people)s, OWN_AREA=%(ownarea)s, AXIOMS=%(axioms)s,
       SCOPE_TEXTS=%(scopetexts)s, SHOW_AXIOM_BADGES=%(showaxioms)s,
-      USED_BY_NAMES=%(usedbynames)s;
+      USED_BY_NAMES=%(usedbynames)s, COMS=%(coms)s;
 const UNSAFE=new Set(%(unsafe)s);
 // The emacs Agda input method's own key -> character table (or, for a key
 // with several candidates, key -> [character, ...]), unrelated to
@@ -859,6 +880,7 @@ const AREA=m=>/^Unsafe\./.test(m)?3:/^deprecated\./.test(m)?2
              :/^MGS\./.test(m)?1:0;
 const q=document.getElementById("q"), out=document.getElementById("out"),
       useMods=document.getElementById("mods"), useSigs=document.getElementById("sigs"),
+      useComs=document.getElementById("coms"),
       useAllScope=document.getElementById("allscope"),
       exact=document.getElementById("exact"),
       clr=document.getElementById("clr"), help=document.getElementById("help"),
@@ -1052,8 +1074,8 @@ function axiomBadges(idxs){
 function scopeBadge(idx){
   return idx<0 ? '' : '<div class="axioms">assumptions: '+esc(SCOPE_TEXTS[idx])+'</div>';
 }
-function render(rows,concepts,people,inPath,terms,wantMods,wantSigs,wantAllScope){
-  if(!rows.length && !concepts.length && !people.length){
+function render(rows,concepts,people,coms,inPath,terms,wantMods,wantSigs,wantAllScope){
+  if(!rows.length && !concepts.length && !people.length && !coms.length){
     out.innerHTML='<p class="none">Nothing found.</p>'; return; }
   let h='<table>';
   for(const c of concepts){
@@ -1079,7 +1101,33 @@ function render(rows,concepts,people,inPath,terms,wantMods,wantSigs,wantAllScope
           +r[3]+'</button>'+usedIn(r[7])
         : '')+'</td></tr>';
   }
+  for(const c of coms){
+    const link=SITE+MODS[c[1]]+'.html';
+    h+='<tr class="comment"><td class="n"><a href="'+link+'">'
+      +highlight(snippet(c[0],terms),terms)+'</a></td>'
+      +'<td class="m"><a href="'+link+'">'+esc(MODS[c[1]])+'</a></td>'
+      +'<td class="u"></td></tr>';
+  }
   out.innerHTML=h+'</table>';
+}
+// Around the earliest matched term, not just the start of the paragraph, so
+// a hit buried in a long comment is still visible without reading past it.
+function snippet(text,terms){
+  const lc=text.toLowerCase();
+  let pos=-1;
+  for(const t of terms){
+    const i=t.rx?(t.rx.exec(lc)||{index:-1}).index:lc.indexOf(t.w);
+    if(i>=0 && (pos<0||i<pos)) pos=i;
+  }
+  if(pos<0) pos=0;
+  const width=220;
+  let start=Math.max(0,pos-60);
+  let end=Math.min(text.length,start+width);
+  start=Math.max(0,end-width);
+  let s=text.slice(start,end);
+  if(start>0) s="…"+s;
+  if(end<text.length) s+="…";
+  return s;
 }
 function search(){
   const raw=q.value.trim();
@@ -1095,7 +1143,7 @@ function search(){
   }
   if(!raw){ out.innerHTML=''; return; }
   const whole=exact.checked, wantMods=useMods.checked, wantSigs=useSigs.checked,
-        wantAllScope=useAllScope.checked;
+        wantComs=useComs.checked, wantAllScope=useAllScope.checked;
   // "compact in Ordinals" stays inside one directory or file: the word
   // after a standalone "in" is a dotted module path, matched segment by
   // segment against the front of a module's own dotted name. Every
@@ -1118,6 +1166,20 @@ function search(){
   const terms=needle.split(/\s+/).map(w=>({w:w, rx:wildcard(w,whole)}));
   const has=(s,t)=>t.rx?t.rx.test(s):s.includes(t.w);
   const all=s=>terms.every(t=>has(s,t));
+  // "search within commentary instead" swaps the whole result set for one
+  // over prose paragraphs, rather than piling them on top of the usual
+  // definitions/concepts/contributors -- prose is both the biggest single
+  // piece of text in the index and the likeliest to hit a plain word by
+  // accident, so a combined list would mean scrolling through everything
+  // else first. "compact in Ordinals" still scopes it exactly like anything
+  // else, since inPath above does not depend on which mode this is.
+  if(wantComs){
+    const coms=COMS.filter(c=>all(c[0].toLowerCase()) && (!inPath || inPath(c[1])))
+                   .map(c=>[AREA(MODS[c[1]]),c]).sort((a,b)=>a[0]-b[0])
+                   .slice(0,400).map(x=>x[1]);
+    render([],[],[],coms,inPath,terms,wantMods,wantSigs,wantAllScope);
+    return;
+  }
   const hits=[];
   for(const r of DEFS){
     if(inPath && !inPath(r[1])) continue;
@@ -1153,7 +1215,7 @@ function search(){
              .map(c=>[c[0],c[1].filter(ownSiteInPath),c[2].filter(inPath),c[3]]);
     ppl=ppl.filter(p=>p[2].some(inPath)).map(p=>[p[0],p[1],p[2].filter(inPath)]);
   }
-  render(hits.slice(0,400).map(h=>h[3]),cons,ppl,inPath,terms,wantMods,wantSigs,wantAllScope);
+  render(hits.slice(0,400).map(h=>h[3]),cons,ppl,[],inPath,terms,wantMods,wantSigs,wantAllScope);
 }
 // Emacs Agda-mode style escape sequences, e.g. \to for "→" and \MCU for
 // "𝓤". Runs on every keystroke rather than waiting for a trigger key,
@@ -1263,6 +1325,7 @@ q.addEventListener("keydown",e=>{
 });
 useMods.addEventListener("change",search);
 useSigs.addEventListener("change",search);
+useComs.addEventListener("change",search);
 useAllScope.addEventListener("change",search);
 exact.addEventListener("change",search);
 // A search updates the URL (see above), so it can be bookmarked or sent to
@@ -1302,7 +1365,7 @@ AXIOM_CONCEPTS = ["function extensionality", "propositional extensionality",
 SHOW_AXIOM_BADGES = False
 
 
-def write_search_page(rows, out, site, table, body, people, unsafe, escapes, htmldir):
+def write_search_page(rows, out, site, table, body, paras, people, unsafe, escapes, htmldir):
     # Every module with a rendered page, not just the ~90% that define at
     # least one indexed name -- a concept's best prose is often in a pure
     # overview/index module that defines nothing of its own (import
@@ -1315,6 +1378,14 @@ def write_search_page(rows, out, site, table, body, people, unsafe, escapes, htm
     rendered = {os.path.basename(p)[:-5] for p in glob.glob(f"{htmldir}/*.html")}
     mods = sorted((set(body) | {r["module"] for r in rows}) & rendered)
     mi = {m: i for i, m in enumerate(mods)}
+    # One entry per prose paragraph, [text, module index] -- unlike BODY,
+    # which folds a whole module's commentary into one string only ever
+    # tested for membership (see concepts_of), this is granular enough to be
+    # a search result in its own right, only ever shown for a query ending
+    # "in comment(s)" (see the SEARCH_TEMPLATE's own search()), since it is
+    # both the biggest single piece of text in the index (~1.7 MB) and the
+    # one a plain word is likeliest to hit by accident in ordinary prose.
+    coms = [[p, mi[m]] for m in mods for p in paras.get(m, [])]
     cons = []
     axiom_patterns = []   # [(index into AXIOM_CONCEPTS, compiled ip), ...]
     for line in open(table, encoding="utf-8"):
@@ -1375,9 +1446,11 @@ def write_search_page(rows, out, site, table, body, people, unsafe, escapes, htm
     defs.sort(key=lambda d: -d[3])
     page = SEARCH_TEMPLATE % dict(
         ndefs=f"{len(defs):,}", ncons=len(cons), ntotal=f"{len(body):,}",
+        ncoms=f"{len(coms):,}",
         site=json.dumps(site), mods=json.dumps(mods, ensure_ascii=False),
         defs=json.dumps(defs, ensure_ascii=False, separators=(",", ":")),
         cons=json.dumps(cons, ensure_ascii=False, separators=(",", ":")),
+        coms=json.dumps(coms, ensure_ascii=False, separators=(",", ":")),
         ownarea=json.dumps(LINK_IN_OWN_AREA),
         unsafe=json.dumps(sorted(mi[m] for m in unsafe if m in mi)),
         people=json.dumps([[n, unaccented(n).lower(), [mi[m] for m in ms if m in mi]]
@@ -1509,7 +1582,7 @@ def main():
         os.makedirs(htmldir, exist_ok=True)
         render(a.source, a.entry, htmldir, a.agda)
     rows = gather(htmldir, a.source)
-    _, body = prose_of(a.source)
+    _, body, paras = prose_of(a.source)
     if a.markdown:
         write_identifier_index(rows, a.out, a.site, len(body))
         write_concept_index(rows, a.out, a.site, a.concepts, body)
@@ -1522,7 +1595,7 @@ def main():
     # --no-html help text above and README.md).
     concepts = concepts_of(a.concepts, body) if (not a.no_html or a.emacs_index) else []
     if not a.no_html:
-        write_search_page(rows, a.out, a.site, a.concepts, body, people,
+        write_search_page(rows, a.out, a.site, a.concepts, body, paras, people,
                           unsafe_modules(a.source), a.escapes, htmldir)
     if a.json:
         json.dump(rows, open(os.path.join(a.out, "definitions.json"), "w"))
