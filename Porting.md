@@ -278,12 +278,12 @@ say so.
 
 This points at something larger: a lot of what can go wrong here goes
 wrong quietly. A missing `concepts.tsv`, a README in the wrong shape,
-a literate convention
-`prose_of()` does not recognise, a name that never made it into
-`NOTIONS`, none of these stop the index from being built, and all of
-them can leave it looking complete when it is not. The one place this
-script already checks itself is an incompletely rendered development,
-and the comment next to that check states the general principle well:
+a literate convention `prose_of()` does not recognise, a name that
+never made it into `NOTIONS`: none of these stop the index from being
+built, and all of them can leave it looking complete when it is not.
+The one place this script already checks itself is an incompletely
+rendered development, and the comment next to that check states the
+general principle well:
 it looks fine until the counts are actually read closely. That is the
 discipline the rest of a port needs too. A clean run is not evidence
 of a complete index. Only reading the counts printed at the end,

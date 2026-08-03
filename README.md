@@ -88,8 +88,7 @@ works.
 ### Compiling it
 
 `make install` (see [Using the Makefile](#using-the-makefile)) does
-this too.
-Byte-compiling is optional on its own. Run
+this too. Byte-compiling is optional on its own. Run
 
     ./compile-emacs-command
 
@@ -247,7 +246,7 @@ piling one up per keystroke, so the back button has nothing to undo.
   `concepts.tsv`, each naming the definitions that are the concept and
   the modules whose commentary discusses it. This was first
   constructed automatically by a heuristic matching comments to Agda
-  code, number of occurrences etc., and then some concepts were added
+  code and counting occurrences, and then some concepts were added
   manually. These play the role of the concepts listed in a
   mathematical textbook index.
 

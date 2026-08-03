@@ -558,9 +558,9 @@ def write_concept_index(rows, out, site, table, body):
     for r in rows: byname[r["name"]].append(r)
 
     def sites(n):
-        "Every definition site of a name, most-referenced first. A name may be\n"
-        "defined in several modules -- is-compact is a different notion for types,\n"
-        "for domain elements and for locales -- so all of them are listed."
+        """Every definition site of a name, most-referenced first. A name may be
+        defined in several modules -- is-compact is a different notion for types,
+        for domain elements and for locales -- so all of them are listed."""
         return sorted(byname[n], key=lambda r: (-r["uses"], len(r["module"])))
     def link(r):
         return f"[`{r['name']}`]({site}{r['module']}.html#{r['frag']})"

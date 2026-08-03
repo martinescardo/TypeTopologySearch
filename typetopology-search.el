@@ -720,7 +720,7 @@ literal \"--\" (two hyphens, Agda's own comment marker -- Agda itself
 needs no space after it either, so neither does this: \"--compact\" and
 \"-- compact\" both work) -- the same syntax the browser search page's
 \"search within commentary instead\" checkbox offers, but written as a
-query prefix here since there is no minibuffer checkbox to tick).
+query prefix here since there is no minibuffer checkbox to tick.
 WANT-COMMENTS is non-nil and REST is QUERY with the marker and any
 further leading whitespace stripped; otherwise WANT-COMMENTS is nil and
 REST is QUERY unchanged. No real definition, contributor, or concept
@@ -1447,7 +1447,7 @@ complementary command, bound by agda2-mode itself.
   (let ((m (make-sparse-keymap)))
     (define-key m (kbd "C-c C-g") #'ttsearch)
     m)
-  "Keymap for `typetopology-mode' -- \"v\", next to agda2-mode's own \"c\"
+  "Keymap for `typetopology-mode' -- \"g\", next to agda2-mode's own \"c\"
 prefix commands, so it is reachable with the same hand.")
 
 ;;;###autoload
