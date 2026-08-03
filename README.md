@@ -326,9 +326,8 @@ as `make search-page` and `make definitions` (see [Other Makefile
 targets](#other-makefile-targets)). The first writes
 `TypeTopologySearch.html`. The second writes `Definitions.tsv`, the
 same way `typetopology-search.el`'s bootstrap does. Both call
-`agda-index.py` with `--typetopology` set to their one argument. Read
-on for what that script takes directly, for anything these two do not
-cover.
+`agda-index.py` with `--typetopology` set to their one argument; the
+script itself takes several more options than either wrapper exposes.
 
 When running the script `agda-index.py`, the option `--typetopology
 <path/to/TypeTopology>` must be given.
@@ -425,10 +424,10 @@ column, which does feed that scan to decide which modules are
 "discussed in" a concept. Leave it empty when the second column already
 covers the word, which is the common case.
 
-Two things are worth checking before adding a row. The pattern should be
-cut back to the point where every variant of the notion is caught but no
-unrelated word is. And the named definitions should be checked to exist,
-since a name that seems obvious is often not the one the library uses.
+The pattern should be cut back to the point where every variant of the
+notion is caught but no unrelated word is, and the named definitions
+should be checked to exist, since a name that seems obvious is often
+not the one the library uses.
 
 <sub>[Table of contents](#table-of-contents)</sub>
 
@@ -503,9 +502,9 @@ See the [Makefile](Makefile) itself for further details.
 
 This was built for TypeTopology, but most of what we have here should
 work for any repository. Reading Agda's own HTML rendering, ranking
-results, handling wildcards -- none of it is really about TypeTopology
-at all; what is, is a handful of hardcoded names, plus a couple of
-things TypeTopology itself does its own way. [Porting.md](Porting.md)
+results, and handling wildcards are not really about TypeTopology at
+all; what is, is a handful of names fixed in the code, plus a couple
+of things TypeTopology itself does its own way. [Porting.md](Porting.md)
 goes through all of it, for anyone who wants to port this to another
 Agda development.
 
