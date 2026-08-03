@@ -108,7 +108,8 @@ against the whole library. Type to filter the results, shown in their
 own window. The arrow keys move a highlighted selection over them, and
 RET acts on it, inserting the name at point, jumping to its definition,
 or inserting `open import Module` for it, whichever you last chose, or
-asking the first time. TAB always asks. See
+asking the first time. TAB always asks. `C-h` shows a brief syntax
+cheatsheet without leaving the search. See
 [In detail](#in-detail) for more.
 
 <sub>[Table of contents](#table-of-contents)</sub>
@@ -121,9 +122,10 @@ opens the action menu for the currently selected result. The menu's
 last choice, updating the index, is not about the result at all, and
 so never becomes what plain RET repeats afterward.
 
-A contributor or a concept has only one action, jumping to a module
-that mentions it, so both RET and TAB go straight there with no menu
-step at all.
+A contributor, a concept, or a comment has only one action, jumping to
+the module it was found in, so both RET and TAB go straight there with
+no menu step at all -- and, for a comment, with no "which module?"
+prompt either, since a paragraph is only ever found in exactly one.
 
 <sub>[Table of contents](#table-of-contents)</sub>
 
@@ -143,6 +145,21 @@ definition's own module is scoped this way in Emacs. A contributor or
 concept has no source file of its own, so neither ever survives an
 `in` query here, unlike on the search page, where a concept's or
 contributor's mentioning modules count for `in` too.
+
+A query starting `--` (Agda's own comment marker; no space needed
+after it, so `--compact` and `-- compact` both work) searches the
+library's prose commentary instead, excluding every definition,
+contributor, and concept -- and, the other way round, an ordinary
+query never matches a paragraph of commentary. This is the Emacs
+equivalent of the search page's own "search within commentary instead"
+checkbox (see [below](#what-you-can-search-for-in-the-search-page)),
+written as a query prefix since there is no minibuffer checkbox to
+tick. Unlike a contributor or concept, a paragraph belongs to exactly
+one module, so it is scoped by `in PATH` exactly like a definition:
+`-- compact in Ordinals` composes the two. Set
+`typetopology-search-include-comments` to nil to drop these entries
+at load time if they turn out to make filtering noticeably slower on
+a real checkout.
 
 <sub>[Table of contents](#table-of-contents)</sub>
 
@@ -235,6 +252,15 @@ piling one up per keystroke, so the back button has nothing to undo.
 
 * **Contributors.** We list the people of `TypeTopology`'s own top-level
   `README.md`, with the modules that name them.
+
+* **Comments.** With "search within commentary instead" ticked, the
+  search becomes one over the library's prose commentary alone, one
+  paragraph per result, in place of definitions, concepts, and
+  contributors rather than alongside them. Off by default: prose is
+  both the single biggest chunk of text in the index and the likeliest
+  to hit a plain word by accident. A comment is scoped by `in PATH`
+  (below) exactly like a definition, since each paragraph belongs to
+  exactly one module.
 
 Several words all have to match, so `compact ordinal` asks to match
 both compact and ordinal, matching a word against either a definition

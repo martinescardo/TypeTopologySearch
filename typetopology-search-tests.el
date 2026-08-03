@@ -898,9 +898,27 @@ minibuffer read would, before returning."
                             (typetopology-search--read-prompt)))))
 
 (ert-deftest tt-search-read-prompt-before-any-default ()
+  "\"Type to search\", matching the results buffer's own placeholder
+for the same blank-query state (see typetopology-search--render),
+rather than a differently-worded \"...to filter\"."
   (let ((typetopology-search--last-action nil))
-    (should (string-match-p "type to filter"
+    (should (string-match-p "type to search"
                             (typetopology-search--read-prompt)))))
+
+(ert-deftest tt-search-read-prompt-mentions-c-h-for-help ()
+  "Both forms of the prompt point at `C-h' (see
+`typetopology-search--show-help')."
+  (let ((typetopology-search--last-action nil))
+    (should (string-match-p "C-h for help" (typetopology-search--read-prompt))))
+  (let ((typetopology-search--last-action 'jump-to-source))
+    (should (string-match-p "C-h for help" (typetopology-search--read-prompt)))))
+
+(ert-deftest tt-search-read-prompt-has-no-redundant-typetopology-prefix ()
+  "Dropped to make room for \"C-h for help\" without lengthening the
+line -- this prompt is only ever shown while `typetopology-search' is
+already running, so naming it again said nothing new."
+  (let ((typetopology-search--last-action nil))
+    (should-not (string-match-p "TypeTopology" (typetopology-search--read-prompt)))))
 
 (ert-deftest tt-search-choose-action-prompt-differs-first-time ()
   (let (seen-prompt)
@@ -1930,6 +1948,26 @@ than assuming the main search's own defaults."
   "TAB has no separate meaning in the action menu -- unlike the main
 search's own map, this one only ever needs arrow keys and RET."
   (should-not (lookup-key typetopology-search--action-minibuffer-map (kbd "TAB"))))
+
+(ert-deftest tt-search-minibuffer-map-binds-c-h-to-help-not-tab-menu ()
+  "Help lives on `C-h', reachable with no match needed, not as a TAB
+menu entry (which only ever opens for an already-selected result --
+see `typetopology-search--confirm-tab') and not on `?', which is
+itself a live wildcard character in the query syntax."
+  (should (eq (lookup-key typetopology-search--minibuffer-map (kbd "C-h"))
+             #'typetopology-search--show-help)))
+
+(ert-deftest tt-search-show-help-opens-a-help-buffer ()
+  (unwind-protect
+      (progn
+        (typetopology-search--show-help)
+        (should (get-buffer "*TypeTopology Search Help*"))
+        (with-current-buffer "*TypeTopology Search Help*"
+          (should (derived-mode-p 'help-mode))
+          (should (string-match-p "in PATH\\|Ordinals\\.Comp"
+                                  (buffer-string)))
+          (should (string-match-p "--compact" (buffer-string)))))
+    (ignore-errors (kill-buffer "*TypeTopology Search Help*"))))
 
 (ert-deftest tt-search-refilter-resets-selection-and-filters ()
   (with-temp-buffer

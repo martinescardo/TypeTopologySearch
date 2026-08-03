@@ -1017,6 +1017,41 @@ well defined once there is at least one match."
   (interactive)
   (typetopology-search--confirm t))
 
+(defun typetopology-search--show-help ()
+  "Pop up a brief syntax cheatsheet in a `help-mode' buffer -- `q' or
+any other key dismisses it and returns straight to the search, without
+exiting the minibuffer or disturbing what has been typed so far,
+exactly like `C-h f' does from anywhere else. Bound to `C-h' rather
+than living as a TAB menu entry precisely because it needs no existing
+match to work: TAB's own menu (see `typetopology-search--confirm-tab')
+only ever opens for whatever is currently selected, so someone who has
+typed nothing yet, or nothing that matches -- exactly who is most
+likely to need this -- could never reach it there."
+  (interactive)
+  (with-help-window "*TypeTopology Search Help*"
+    (princ "\
+Keys
+  ↑ / ↓    move the selection
+  RET     repeat the last action, or ask the first time
+  TAB     action menu
+  C-h     this help
+
+Syntax
+  several words        all have to match, each anywhere in a
+                        result's name, type, module, or its
+                        (assumes: ...) clause
+  *  ?  \\*             any run of characters, a single one, a
+                        literal star
+  NAME in Ordinals.Comp
+                        restrict to one directory or file -- the
+                        last segment is a prefix, so it narrows
+                        while still being typed
+  --NAME, or -- NAME (no space needed)
+                        search the library's prose commentary
+                        instead, excluding definitions,
+                        contributors, and concepts -- \"--compact
+                        in Ordinals\" composes both")))
+
 (defun typetopology-search--update-from-search ()
   "Rebuild the index right now, without leaving the search -- the same
 work `typetopology-search-update-index' does, plus refiltering so
@@ -1044,23 +1079,33 @@ of its own to react to."
     (define-key m (kbd "C-c C-u") #'typetopology-search--update-from-search)
     (define-key m (kbd "RET") #'typetopology-search--confirm-ret)
     (define-key m (kbd "TAB") #'typetopology-search--confirm-tab)
+    (define-key m (kbd "C-h") #'typetopology-search--show-help)
     m)
   "Installed for the duration of the candidate read only. Arrow keys
 move the selection over the CURRENTLY MATCHING entries shown in
 `typetopology-search--results-buffer-name', not minibuffer history --
 history is still reachable, just on M-p/M-n instead, which this map
-does not touch.")
+does not touch. `C-h', not `?', since `?' is itself a live wildcard
+character in the query syntax (see `typetopology-search--wildcard-regexp')
+and would otherwise be unable to insert one at all.")
 
 (defun typetopology-search--read-prompt ()
   "The candidate-list prompt, naming the current default action (or, the
 first time, how to search instead, since what a pick DOES is already
 explained in full by the action menu itself right after) so RET's
-effect is never a surprise."
+effect is never a surprise. No leading \"TypeTopology (...)\" -- this
+is only ever shown while already running `typetopology-search', so
+saying whose search this is would be telling something already known,
+and dropping it makes room for \"C-h for help\" (see
+`typetopology-search--show-help') without lengthening the line."
   (if typetopology-search--last-action
-      (format "TypeTopology (RET: %s; ↑/↓ to pick, TAB for menu): "
+      (format "RET: %s; ↑/↓ to pick, TAB for menu, C-h for help: "
               (downcase (typetopology-search--action-label
                          typetopology-search--last-action)))
-    "TypeTopology (type to filter; ↑/↓ to pick, TAB for menu): "))
+    ;; "Type to search", not "...to filter", to match the results
+    ;; buffer's own placeholder for the same blank-query state (see
+    ;; typetopology-search--render) -- the two disagreed before this.
+    "Type to search; ↑/↓ to pick, TAB for menu, C-h for help: "))
 
 (defun typetopology-search--read-candidate ()
   "Read one candidate, returning (ENTRY . VIA-TAB). Own minimal
