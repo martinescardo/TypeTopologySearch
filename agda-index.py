@@ -71,7 +71,12 @@ def scopes(text, literate=True):
     A scope is ('module', indent, name, header) for anything whose members
     stay accessible from outside -- module, record, data, field,
     constructor -- and ('local', indent, None, '') or ('private', ...) for
-    anything whose members do not. In literate files only code blocks are
+    anything whose members do not. The file's own module gets the separate
+    kind 'toplevel': it takes parameters like any other module, but its
+    name is the file's and so must not be repeated as an inner one. It also
+    never leaves the stack, since a file's body sits at the same indent as
+    the `module` line that opens it and the rule below would otherwise pop
+    it at the first declaration. In literate files only code blocks are
     inspected, since prose may well contain a line ending in the word
     "where". `header` is the declaration's own parameter list -- for a
     `module M (fe : Fun-Ext) where`, everything between the name and
@@ -84,7 +89,7 @@ def scopes(text, literate=True):
     "univalence" or "choice" occurs in the text, exactly like actually
     taking one as a parameter.
     """
-    out, stack, pending = [], [], None
+    out, stack, pending, base = [], [], None, 0
     incode = not literate
     for raw in text.split("\n"):
         if literate:
@@ -94,7 +99,7 @@ def scopes(text, literate=True):
         line = raw.rstrip(); stripped = line.strip()
         indent = len(line) - len(line.lstrip()) if stripped else 0
         if stripped:
-            while stack and indent <= stack[-1][1]:
+            while len(stack) > base and indent <= stack[-1][1]:
                 stack.pop()
         out.append(list(stack))
         if not stripped:
@@ -116,10 +121,25 @@ def scopes(text, literate=True):
             pending = (indent, parts[1] if len(parts) > 1 else "_", rest)
         if re.match(r"private\b", stripped):
             stack.append(("private", indent, None, ""))
+        # `module M (x : X) = N x` applies an existing module rather than
+        # opening a new one, and so never reaches a "where" of its own. Its
+        # header has to be abandoned at the "=", or it goes on swallowing
+        # every line after it until some unrelated later "where" adopts the
+        # lot as its parameter list. A bare "=" is unambiguous here: the
+        # equality of the library's own types is the distinct character
+        # "＝", so a plain "=" in a module line is always this one.
+        if pending is not None and re.search(r"(^|\s)=(\s|$)", pending[2]) \
+           and not re.search(r"(^|\s)where$", stripped):
+            pending = None
         if re.search(r"(^|\s)where$", stripped):
             if pending is not None:
                 header = re.sub(r"(^|\s)where\s*$", "", pending[2])
-                stack.append(("module", pending[0], pending[1], header)); pending = None
+                if not stack and not base:
+                    stack.append(("toplevel", pending[0], pending[1], header))
+                    base = 1
+                else:
+                    stack.append(("module", pending[0], pending[1], header))
+                pending = None
             else:
                 stack.append(("local", indent, None, ""))
     return out
@@ -277,8 +297,13 @@ def definitions(page, src):
         # A hypothesis such as funext is often a MODULE parameter, taken once
         # for everything inside rather than repeated in each signature, so
         # is otherwise invisible to whatever scans sig for one -- carried
-        # along here, separately from sig, for exactly that purpose.
-        scope_text = " ".join(h for k, _, _, h in enclosing if k == "module" and h)
+        # along here, separately from sig, for exactly that purpose. The
+        # file's own module counts: a whole file taking (fe : Fun-Ext) is
+        # one of the commonest ways such a hypothesis is taken here. Its
+        # name, unlike its parameters, is `mod` itself and so is left out of
+        # `inner`, which lists submodules only.
+        scope_text = " ".join(h for k, _, _, h in enclosing
+                              if k in ("module", "toplevel") and h)
         yield dict(module=mod, name=name, kind=m.group(3), anchor=m.group(2),
                    frag=fragment(html.unescape(m.group(1))) if m.group(1)
                         else m.group(2),
@@ -1084,11 +1109,11 @@ function axiomBadges(idxs){
         +idxs.map(i=>'<a href="#" data-ax="'+i+'">'+esc(AXIOMS[i])+'</a>').join(", ")
         +'</div>';
 }
-// The raw parameter list of every module enclosing a definition, however
-// many levels deep, unfiltered -- unlike axiomBadges, not just the nine
-// curated hypotheses, so this also shows a plain type variable or a
-// development-specific structure (X : 𝓤 ̇ , G : Group) that never gets a
-// concept row of its own.
+// The raw parameter list of every module enclosing a definition, from the
+// file's own module inwards however many levels deep, unfiltered -- unlike
+// axiomBadges, not just the nine curated hypotheses, so this also shows a
+// plain type variable or a development-specific structure (X : 𝓤 ̇ ,
+// G : Group) that never gets a concept row of its own.
 function scopeBadge(idx){
   return idx<0 ? '' : '<div class="axioms">assumptions: '+esc(SCOPE_TEXTS[idx])+'</div>';
 }
