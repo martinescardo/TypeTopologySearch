@@ -477,9 +477,15 @@ def people_of(readme, body):
     """The contributors of the README, and the modules that mention them.
 
     A contributor is matched by full name, and also by surname alone, which
-    is how citations and acknowledgements read. The surname is not taken
-    when another capitalised word follows it, since that is somebody else
-    whose given name it happens to be -- "Ray Mines" is not Ian Ray.
+    is how citations and acknowledgements read. The surname is taken as
+    written, capitalised, and not when a capitalised word follows it, since
+    that is somebody else whose given name it happens to be: "Ray Mines" is
+    not Ian Ray. A possessive followed by a capitalised word, "Rice's
+    Theorem", and a surname hyphenated to a lowercase word, "a Rice-like
+    theorem", name a result after somebody rather than name a contributor,
+    and are not taken either. A hyphen before a capitalised word is a
+    different matter, since "Escardo-Simpson" and "Berardi-Bezem-Coquand"
+    do name their people.
     """
     names, inside = [], False
     for line in open(readme, encoding="utf-8"):
@@ -492,7 +498,13 @@ def people_of(readme, body):
     for n in names:
         full = re.escape(unaccented(n)).replace(r"\ ", r"\s+")
         sur = re.escape(unaccented(n.split()[-1]))
-        rx = re.compile(rf"{full}|\b{sur}\b(?!\s+[A-Z])", re.I)
+        # The full name is matched in any case, the surname only in the
+        # capitalisation of a name, so that "rice" as ordinary English is
+        # not one. The case flag has to be scoped rather than global, as a
+        # global one would make [A-Z] match a lowercase letter too, and the
+        # guards below would then exclude any following word at all.
+        rx = re.compile(rf"(?i:{full})"
+                        rf"|(?-i:\b{sur}\b(?!\s+[A-Z]|['’]s\s+[A-Z]|-[a-z]))")
         out.append((n, sorted(m for m, t in plain.items() if rx.search(t))))
     return out
 
