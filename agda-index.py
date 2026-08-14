@@ -1190,8 +1190,9 @@ function search(){
   help.hidden=!!raw;   // the counts and the instructions give way to results
   selRow=-1;           // a fresh set of rows, so any keyboard selection resets
   // Kept in the URL so a search is itself a link -- #q=... rather than
-  // ?q=..., since a hash change never asks the server for anything.
-  const newHash=raw?"#q="+encodeURIComponent(raw):"";
+  // ?q=..., since a hash change never asks the server for anything. A
+  // commentary search carries &c=1, so that it too can be linked to.
+  const newHash=raw?"#q="+encodeURIComponent(raw)+(useComs.checked?"&c=1":""):"";
   if((location.hash||"")!==newHash){
     if(newHash) history.replaceState(null,"",newHash);
     else history.replaceState(null,"",location.pathname+location.search);
@@ -1386,12 +1387,17 @@ exact.addEventListener("change",search);
 // A search updates the URL (see above), so it can be bookmarked or sent to
 // someone else; this is the other half, reading it back on arrival --
 // including a plain #q=... link typed or pasted while the page is already
-// open, which fires "hashchange" rather than a fresh load.
+// open, which fires "hashchange" rather than a fresh load. A trailing &c=1
+// asks for the commentary, and &c=0 for everything else, so that a link can
+// reach a paragraph of prose, which a bare #q=... never can while the
+// commentary box is left as it stands.
 function loadFromHash(){
-  const m=location.hash.match(/^#q=(.*)$/);
+  const m=location.hash.match(/^#q=([^&]*)(?:&c=([01]))?$/);
   const raw=m?decodeURIComponent(m[1]):"";
-  if(raw===q.value) return;
+  const coms=m&&m[2]?m[2]==="1":useComs.checked;
+  if(raw===q.value&&coms===useComs.checked) return;
   q.value=raw;
+  useComs.checked=coms;
   search();
 }
 window.addEventListener("hashchange",loadFromHash);

@@ -224,6 +224,11 @@ the address bar itself can be bookmarked or sent to someone else and
 lands on the same results. A search replaces this fragment rather than
 piling one up per keystroke, so the back button has nothing to undo.
 
+A search of the commentary says so in the link, as `#q=...&c=1`, and
+`#q=...&c=0` asks for everything else instead, so that a link can reach
+a paragraph of prose and not just a definition. A link that says
+neither leaves the commentary box as the reader had it.
+
 <sub>[Table of contents](#table-of-contents)</sub>
 
 ### What you can search for in the search page
