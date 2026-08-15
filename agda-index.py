@@ -1259,7 +1259,14 @@ function search(){
   // "exhaustible" finds compactness even though no label says it.
   let cons=CONS.filter(c=>all(c[0].toLowerCase())
                           || (c[3] && new RegExp(c[3],"i").test(needle)));
-  let ppl=PEOPLE.filter(p=>all(p[1]));
+  // A contributor is stored under a key with the accents taken off, so that
+  // a file writing Escardó and a file writing Escardo name the same person.
+  // The query has to be folded the same way before it is compared with that
+  // key, or a reader who spells Opršal as he does reaches nobody.
+  const unaccent=s=>s.normalize("NFKD").replace(/\p{M}/gu,"");
+  const pterms=needle.split(/\s+/).map(w=>unaccent(w))
+                     .map(w=>({w:w, rx:wildcard(w,whole)}));
+  let ppl=PEOPLE.filter(p=>pterms.every(t=>has(p[1],t)));
   // With a path, a concept or contributor only survives if one of its own
   // definitions or one of its modules lies within it, and only those names
   // and modules are shown -- a bold name with no site in the path would
