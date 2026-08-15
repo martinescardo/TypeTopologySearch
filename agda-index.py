@@ -897,6 +897,8 @@ SEARCH_TEMPLATE = r"""<!DOCTYPE html>
     <code>\top</code> could still follow.</li>
 <li>Search is also
     <a href="https://github.com/martinescardo/TypeTopologySearch#installing-the-emacs-command">available from Emacs</a>.</li>
+<li>What each directory of %(name)s is about is described in its
+    <a href="https://github.com/martinescardo/TypeTopologyModuleDescriptions/">module descriptions</a>.</li>
 </ul>
 <p class="sub">%(ndefs)s definitions and %(ncons)s concepts in %(ntotal)s modules
    (%(ncoms)s comments).</p>
