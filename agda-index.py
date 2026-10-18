@@ -1435,6 +1435,50 @@ AXIOM_CONCEPTS = ["function extensionality", "propositional extensionality",
 SHOW_AXIOM_BADGES = False
 
 
+def version_link(repo, version):
+    "A version, linked to itself on GitHub."
+    return (f'<a href="https://github.com/martinescardo/{repo}/commit/'
+            f'{version.rstrip("+")}">{version}</a>')
+
+
+def tooling_version():
+    """The version of this repository, read from this script's own checkout.
+
+    Taken from the checkout rather than passed in, so that a page says what
+    built it wherever it was built. A working tree with changes in it gets a
+    + , since the version alone would be a false record of a page nobody can
+    reproduce.
+    """
+    here = os.path.dirname(os.path.realpath(__file__))
+    try:
+        got = subprocess.run(["git", "rev-parse", "--short=7", "HEAD"], cwd=here,
+                             capture_output=True, text=True, check=True)
+        changes = subprocess.run(["git", "status", "--porcelain", "-uno"], cwd=here,
+                                 capture_output=True, text=True, check=True)
+    except (OSError, subprocess.SubprocessError):
+        return None
+    return got.stdout.strip() + ("+" if changes.stdout.strip() else "")
+
+
+def footer_versions(commit, tooling):
+    """What the footer says after the date, about the versions it is of.
+
+    The version of the library is named only when the caller knows it: a
+    build from a local rendering indexes whatever the working tree happens
+    to hold, which has no name to give, whereas a build from the deployed
+    rendering is of one published version and says so. The version of this
+    repository is always known, and matters because the page can change
+    while the library stands still. The workflow that rebuilds the page
+    reads both back from here, and rebuilds when either has moved, so these
+    links are the record as well as the credit.
+    """
+    library = f" from version {version_link(REPO_NAME, commit)}" if commit else ""
+    if not tooling:
+        return library
+    built = f" by version {version_link('TypeTopologySearch', tooling)} of TypeTopologySearch"
+    return f"{library} of {REPO_NAME}{built}" if commit else built
+
+
 def write_search_page(rows, out, site, table, body, paras, people, unsafe, escapes,
                       htmldir, commit=None):
     # Every module with a rendered page, not just the ~90% that define at
@@ -1534,16 +1578,7 @@ def write_search_page(rows, out, site, table, body, paras, people, unsafe, escap
         showaxioms=json.dumps(SHOW_AXIOM_BADGES),
         esc=open(escapes, encoding="utf-8").read(),
         builddate=datetime.date.today().strftime("%-d %B %Y"),
-        # Which version of the library the index is of, named only when
-        # the caller knows it -- a build from a local rendering indexes
-        # whatever the working tree happens to hold, which has no name to
-        # give, whereas a build from the deployed rendering is of one
-        # published version and says so. The workflow that rebuilds the
-        # page reads it back from here to decide whether there is
-        # anything new to index, so the link is the record as well as
-        # the credit.
-        version=(f' from version <a href="https://github.com/martinescardo/'
-                 f'{REPO_NAME}/commit/{commit}">{commit}</a>' if commit else ""))
+        version=footer_versions(commit, tooling_version()))
     open(f"{out}/TypeTopologySearch.html", "w", encoding="utf-8").write(page)
 
 
@@ -1644,7 +1679,8 @@ def main():
                         "people, if not simply <typetopology>/README.md")
     p.add_argument("--site", default="https://martinescardo.github.io/TypeTopology/")
     p.add_argument("--commit", help="the version of the library the rendering is "
-                                    "of, shown and linked in the page footer")
+                                    "of, shown and linked in the page footer "
+                                    "beside this repository's own version")
     a = p.parse_args()
     if a.source is None:
         a.source = os.path.join(a.typetopology, "source")
