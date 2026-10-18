@@ -1,0 +1,15 @@
+#!/bin/sh
+# Print the version of TypeTopology that the deployed html rendering is of.
+# The library's own workflow substitutes the version into its index page, so
+# the rendering says what it is of, and the search page built from it can be
+# rebuilt exactly when that answer changes.
+# Usage: ./deployed-version [site]
+set -e
+site=${1:-https://martinescardo.github.io/TypeTopology/}
+version=$(curl -sSf "$site" |
+          sed -n 's|.*/commit/\([0-9a-f]\{7,40\}\).*|\1|p' | head -1)
+if [ -z "$version" ]; then
+    echo "no version found in $site" >&2
+    exit 1
+fi
+echo "$version"

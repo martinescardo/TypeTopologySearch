@@ -906,7 +906,7 @@ SEARCH_TEMPLATE = r"""<!DOCTYPE html>
 <div id="browse"></div>
 </div>
 <div id="out"></div>
-<footer>Index built on %(builddate)s.</footer>
+<footer>Index built on %(builddate)s%(version)s.</footer>
 <script>
 const SITE=%(site)s, MODS=%(mods)s, DEFS=%(defs)s, CONS=%(cons)s,
       PEOPLE=%(people)s, OWN_AREA=%(ownarea)s, AXIOMS=%(axioms)s,
@@ -1435,7 +1435,8 @@ AXIOM_CONCEPTS = ["function extensionality", "propositional extensionality",
 SHOW_AXIOM_BADGES = False
 
 
-def write_search_page(rows, out, site, table, body, paras, people, unsafe, escapes, htmldir):
+def write_search_page(rows, out, site, table, body, paras, people, unsafe, escapes,
+                      htmldir, commit=None):
     # Every module with a rendered page, not just the ~90% that define at
     # least one indexed name -- a concept's best prose is often in a pure
     # overview/index module that defines nothing of its own (import
@@ -1532,7 +1533,17 @@ def write_search_page(rows, out, site, table, body, paras, people, unsafe, escap
         usedbynames=json.dumps(used_by_names, ensure_ascii=False),
         showaxioms=json.dumps(SHOW_AXIOM_BADGES),
         esc=open(escapes, encoding="utf-8").read(),
-        builddate=datetime.date.today().strftime("%-d %B %Y"))
+        builddate=datetime.date.today().strftime("%-d %B %Y"),
+        # Which version of the library the index is of, named only when
+        # the caller knows it -- a build from a local rendering indexes
+        # whatever the working tree happens to hold, which has no name to
+        # give, whereas a build from the deployed rendering is of one
+        # published version and says so. The workflow that rebuilds the
+        # page reads it back from here to decide whether there is
+        # anything new to index, so the link is the record as well as
+        # the credit.
+        version=(f' from version <a href="https://github.com/martinescardo/'
+                 f'{REPO_NAME}/commit/{commit}">{commit}</a>' if commit else ""))
     open(f"{out}/TypeTopologySearch.html", "w", encoding="utf-8").write(page)
 
 
@@ -1632,6 +1643,8 @@ def main():
                    help="the readme whose contributor list names the "
                         "people, if not simply <typetopology>/README.md")
     p.add_argument("--site", default="https://martinescardo.github.io/TypeTopology/")
+    p.add_argument("--commit", help="the version of the library the rendering is "
+                                    "of, shown and linked in the page footer")
     a = p.parse_args()
     if a.source is None:
         a.source = os.path.join(a.typetopology, "source")
@@ -1667,7 +1680,7 @@ def main():
     concepts = concepts_of(a.concepts, body) if (not a.no_html or a.emacs_index) else []
     if not a.no_html:
         write_search_page(rows, a.out, a.site, a.concepts, body, paras, people,
-                          unsafe_modules(a.source), a.escapes, htmldir)
+                          unsafe_modules(a.source), a.escapes, htmldir, a.commit)
     if a.json:
         json.dump(rows, open(os.path.join(a.out, "definitions.json"), "w"))
     if a.defs_index:

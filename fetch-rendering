@@ -1,0 +1,103 @@
+#!/usr/bin/env python3
+"""Download TypeTopology's deployed html rendering, to index without Agda.
+
+Usage:
+
+    fetch-rendering /path/to/TypeTopology <dir>
+
+The rendering that agda-index.py reads is produced by TypeTopology's own
+workflow on every version of master and published at
+
+    https://martinescardo.github.io/TypeTopology/
+
+so a machine that only wants to rebuild the search page can take it from
+there rather than run Agda, which is three minutes of a GitHub runner
+instead of the better part of an hour.
+
+The pages to ask for are the modules of the checkout, one page each, rather
+than whatever can be reached by following links from the entry page. A
+crawler drops a module that nothing links to without saying so, and a
+missing module is a silently smaller index, whereas a list taken from the
+sources is complete by construction and a page that fails to arrive is
+reported. Links are still followed once, from the pages that did arrive,
+which is how Agda.Primitive -- rendered, and not a module of the library --
+is picked up.
+"""
+
+import argparse, concurrent.futures, os, re, subprocess, sys, urllib.error
+import urllib.request
+
+LINK = re.compile(r'href="([A-Za-z0-9_.\-]+)\.html[#"]')
+
+
+def modules(source):
+    "The modules of a TypeTopology source directory, as page names."
+    files = subprocess.run(["git", "ls-files", "*.lagda", "*.agda"], cwd=source,
+                           capture_output=True, text=True, check=True)
+    return sorted(re.sub(r"\.l?agda$", "", f).replace("/", ".")
+                  for f in files.stdout.split())
+
+
+def fetch(site, name, dest):
+    "Save one page, returning its text, or None when it is not there."
+    try:
+        with urllib.request.urlopen(f"{site}{name}.html", timeout=60) as r:
+            page = r.read()
+    except (urllib.error.HTTPError, urllib.error.URLError, OSError):
+        return None
+    open(os.path.join(dest, f"{name}.html"), "wb").write(page)
+    return page.decode("utf-8", "replace")
+
+
+def fetch_all(site, names, dest, jobs):
+    "Save the named pages in parallel, returning the ones that arrived."
+    got = {}
+    with concurrent.futures.ThreadPoolExecutor(jobs) as pool:
+        for name, page in zip(names, pool.map(lambda n: fetch(site, n, dest), names)):
+            if page is not None:
+                got[name] = page
+    return got
+
+
+def main():
+    p = argparse.ArgumentParser(description=__doc__.split("\n")[0])
+    p.add_argument("typetopology", help="a TypeTopology checkout, for its module list")
+    p.add_argument("dest", help="where to save the rendering")
+    p.add_argument("--site", default="https://martinescardo.github.io/TypeTopology/",
+                   help="the deployed rendering to download")
+    p.add_argument("--jobs", type=int, default=16,
+                   help="how many pages to ask for at a time")
+    a = p.parse_args()
+    site = a.site if a.site.endswith("/") else a.site + "/"
+    source = os.path.join(a.typetopology, "source")
+    if not os.path.isdir(source):
+        raise SystemExit(f"{source!r} is not a directory -- this does not look "
+                         "like a TypeTopology checkout.")
+    os.makedirs(a.dest, exist_ok=True)
+
+    names = modules(source)
+    got = fetch_all(site, names, a.dest, a.jobs)
+    missing = [n for n in names if n not in got]
+    # Everything these pages link to within the rendering, which is the
+    # library's own modules again and the few pages Agda renders that are
+    # nobody's module. One round is enough: a page outside the source list
+    # is linked from one inside it.
+    linked = {m for page in got.values() for m in LINK.findall(page)}
+    extra = sorted(linked - set(names))
+    got.update(fetch_all(site, extra, a.dest, a.jobs))
+
+    print(f"{len(got)} pages of {len(names)} modules from {site} -> {a.dest}")
+    for n in missing:
+        print(f"missing: {n}", file=sys.stderr)
+    # The same threshold agda-index.py itself warns at, and for the same
+    # reason: a part-rendered or part-arrived library indexes quietly and
+    # looks fine until the counts are read closely. A handful of modules
+    # unreachable from AllModulesIndex, and so never rendered at all, is
+    # ordinary; a tenth of the library gone is not.
+    if len(got) < 0.9 * len(names):
+        raise SystemExit(f"only {len(got)} pages arrived for {len(names)} "
+                         "modules -- the rendering looks incomplete.")
+
+
+if __name__ == "__main__":
+    main()
