@@ -133,7 +133,7 @@ Scott topology	scott topolog	Scott|scott	is-scott-continuous, is-scott-open, is-
 Scott domain	scott domain	ScottDomain|scott-domain	is-scott-domain, DefinitionOfScottDomain
 nucleus	nucleus|nuclei	[Nn]ucleus|nuclei	is-nucleus, is-prenucleus, Perfect-Nucleus
 patch locale	patch	[Pp]atch	Patch⦅Scott⦅𝓓⦆⦆, ℬ-patch, PatchConstruction
-Stone duality	stone|spectral duality	[Ss]tone|duality	is-stone, stoneᴰ, clopen-iff-compact-in-stone-frame
+Stone duality	\bstone|spectral duality	[Ss]tone|duality	is-stone, stoneᴰ, clopen-iff-compact-in-stone-frame
 spectrality	spectral	[Ss]pectral	is-spectral, is-spectral-with-small-basis, is-spectral-map
 sup-lattice	sup.lattice	sup-lattice|Sup-Lattice	is-sup-lattice, Sup-Lattice, sup-lattice-data
 σ-frame	σ.frame|sigma.frame	σ-[Ff]rame	is-σ-frame-hom, is-σ-frame-homomorphism, σ-Frame
@@ -236,3 +236,7 @@ constant map	constant function|constant map	^is-constant|^wconstant	wconstant, w
 discrete	discrete	discrete	is-discrete, discrete-types-are-sets, is-discrete'
 history dependent	history dependent	optimal-outcome|strategic-path|^Game$|^GameJ$	Game, optimal-outcome, strategic-path
 type tree	type tree	^𝑻|type-tree|^Path$	𝑻, 𝑻-induction, Path
+clopen	clopen	[Cc]lopen	Clopen, is-clopen, clopen-subtype
+ultrafilter	ultra filter	[Uu]ltrafilter	is-ultrafilter, ultrafilter-image, fiber-ultrafilter
+principal filter	principal filter|principal ultra filter	principal-filter|is-principal|[Nn]onprincipal|principal-at	principal-filter, is-principal, is-nonprincipal
+Stone type	\bstone types?	[Ss]tone-[Tt]ype	is-stone-type, is-pre-stone-type, ℕ∞-is-stone-type
