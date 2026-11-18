@@ -93,7 +93,7 @@ System T	system t\b	ᵀ$|ᵀ-|⌜|TΩ	TΩ, ⟦_⟧
 Kleisli extension	kleisli	[Kk]leisli	⌜Kleisli-extension⌝, kleisli-extension, Kleisli-extension
 monad	monad	[Mm]onad	Monad, Kleisli-extension
 game	\bgame\b|game tree	[Gg]ame	GameJ, Game, game-tree
-alpha-beta pruning	alpha.beta|α.β		
+alpha-beta pruning	alpha.beta|α.β	αβ|alpha-beta	_is-αβ-approximated-by_, αβ-outcome-and-play, αβ-play-is-optimal
 Lawvere fixed point theorem	lawvere|fixed point theorem	LFPT|[Ll]awvere|fixed-point	LFPT, lfix-is-fixed-point, LFPT-＝
 Higgs involution theorem	higgs	[Hh]iggs	higgs-involution-theorem
 apartness	apartness	apart	is-apartness, is-strong-apartness, ♯-is-apartness
@@ -240,3 +240,9 @@ clopen	clopen	[Cc]lopen	Clopen, is-clopen, clopen-subtype
 ultrafilter	ultra filter	[Uu]ltrafilter	is-ultrafilter, ultrafilter-image, fiber-ultrafilter
 principal filter	principal filter|principal ultra filter	principal-filter|is-principal|[Nn]onprincipal|principal-at	principal-filter, is-principal, is-nonprincipal
 Stone type	\bstone types?	[Ss]tone-[Tt]ype	is-stone-type, is-pre-stone-type, ℕ∞-is-stone-type
+inductive bar	inductive bars?	inductive-bar	is-inductive-bar, inductive-bar-iff-bars-root, inductive-bar-meets-every-sequence
+bar recursion	bar recurs	[Bb]ar-?[Rr]ecurs|mbr	BarRecursor, spector-bar-recursor-spec, modified-bar-recursion-spec
+Brouwer's thesis	brouwer.s thesis	brouwers-thesis	brouwers-thesis-at-prefix, brouwers-thesis-for-bar-continuous-witnesses, brouwers-thesis-for-T-definable-witnesses
+bar continuity	bar contin	bar-contin	is-bar-continuous, bar-continuity-iff-eloquence, T-definable-functions-are-bar-continuous
+eloquence	eloquen	[Ee]loquen	eloquent, eloquence-theorem, eloquence-implies-bar-continuity
+decidable strict weak order	strict weak order	Strict-Weak-Order	Decidable-Strict-Weak-Order
