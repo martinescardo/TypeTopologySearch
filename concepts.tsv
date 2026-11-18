@@ -93,7 +93,7 @@ System T	system t\b	ᵀ$|ᵀ-|⌜|TΩ	TΩ, ⟦_⟧
 Kleisli extension	kleisli	[Kk]leisli	⌜Kleisli-extension⌝, kleisli-extension, Kleisli-extension
 monad	monad	[Mm]onad	Monad, Kleisli-extension
 game	\bgame\b|game tree	[Gg]ame	GameJ, Game, game-tree
-alpha-beta pruning	alpha.beta|α.β	αβ|alpha-beta	_is-αβ-approximated-by_, αβ-outcome-and-play, αβ-play-is-optimal
+alpha-beta pruning	alpha.beta|αβ	αβ|alpha-beta	_is-αβ-approximated-by_, αβ-outcome-and-play, αβ-play-is-optimal
 Lawvere fixed point theorem	lawvere|fixed point theorem	LFPT|[Ll]awvere|fixed-point	LFPT, lfix-is-fixed-point, LFPT-＝
 Higgs involution theorem	higgs	[Hh]iggs	higgs-involution-theorem
 apartness	apartness	apart	is-apartness, is-strong-apartness, ♯-is-apartness
